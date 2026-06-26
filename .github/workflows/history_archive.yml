@@ -1,0 +1,34 @@
+name: Echoes of History Automatons
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 每天早上自动为你开启时间盲盒
+  workflow_dispatch:     # 随时手动召唤打工人
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Access Timeline
+        uses: actions/checkout@v4
+
+      - name: Deploy Chrono Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Quantum Core
+        run: pip install requests
+
+      - name: Extract History Blind Box
+        run: python fetch_history.py
+
+      - name: Seal Archive and Sync
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "📜 Chronicle: automated seal new history fragments" && git push)
