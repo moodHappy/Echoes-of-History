@@ -2,7 +2,7 @@ name: Echoes of History Automatons
 
 on:
   schedule:
-    - cron: '0 15 * * 1'  # 每天早上自动为你开启时间盲盒
+    - cron: '0 15 * * 1'  # 每周自动为你开启时间盲盒
   workflow_dispatch:     # 随时手动召唤打工人
 
 jobs:
