@@ -81,8 +81,6 @@
         .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; font-weight: bold; }
         .form-group input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
         .form-group input:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1); }
-        
-        /* 模拟图中的 Token 浅色背景 */
         #inputToken { background-color: #f0f4ff; border-color: #dbe4ff; }
         #inputToken:focus { background-color: #fff; }
 
@@ -119,7 +117,6 @@
                     <button class="cal-btn" id="todayBtn">回到今天</button>
                 </div>
 
-                <!-- 日历区域：双击/连按呼出删除模式 -->
                 <div class="calendar-box" id="calendarBox">
                     <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                     <div class="days-grid" id="daysGrid"></div>
@@ -157,7 +154,21 @@
     </div>
 
     <script>
-        const archiveData = {"2026": {"7": {"3": [{"time": "19:18", "path": "2026/7/2026_7_3_1918.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "19:12", "path": "2026/7/2026_7_3_1912.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "19:10", "path": "2026/7/2026_7_3_1910.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "19:03", "path": "2026/7/2026_7_3_1903.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "18:57", "path": "2026/7/2026_7_3_1857.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:46", "path": "2026/7/2026_7_3_0046.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
+        // ===DATA_START===
+        let archiveData = {"2026": {"7": {"3": [{"time": "19:28", "path": "2026/7/2026_7_3_1928.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "19:10", "path": "2026/7/2026_7_3_1910.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "19:03", "path": "2026/7/2026_7_3_1903.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "18:57", "path": "2026/7/2026_7_3_1857.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:46", "path": "2026/7/2026_7_3_0046.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
+        // ===DATA_END===
+        
+        // === 本地防缓存黑名单过滤拦截 ===
+        const deletedPaths = JSON.parse(localStorage.getItem('deleted_paths') || '[]');
+        for (let y in archiveData) {
+            for (let m in archiveData[y]) {
+                for (let d in archiveData[y][m]) {
+                    archiveData[y][m][d] = archiveData[y][m][d].filter(item => !deletedPaths.includes(item.path));
+                    if (archiveData[y][m][d].length === 0) delete archiveData[y][m][d];
+                }
+            }
+        }
+
         const today = new Date();
         let selectedYear = today.getFullYear();
         let selectedMonth = today.getMonth() + 1;
@@ -188,9 +199,7 @@
 
         btnSettings.addEventListener('click', openConfigModal);
 
-        btnCancel.addEventListener('click', () => {
-            configModal.classList.remove('show');
-        });
+        btnCancel.addEventListener('click', () => { configModal.classList.remove('show'); });
 
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) configModal.classList.remove('show');
@@ -301,9 +310,53 @@
             }
         }
 
-        // ==== GitHub API 同步删除逻辑 ====
+        // ==== 同步修改远端 index.html 的 JSON ====
+        async function syncIndexHtmlToGithub(token, user, repoName) {
+            const repo = `${user}/${repoName}`;
+            const indexPath = `docs/index.html`;
+            const url = `https://api.github.com/repos/${repo}/contents/${indexPath}`;
+            try {
+                const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+                if (!getRes.ok) return;
+                const fileData = await getRes.json();
+                
+                // Base64 解码 (兼顾中文字符)
+                let content = decodeURIComponent(Array.prototype.map.call(atob(fileData.content), function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                // 正则替换锁定区间的 JSON 数据
+                const newJson = JSON.stringify(archiveData);
+                content = content.replace(/\/\/ ===DATA_START===[\s\S]*?\/\/ ===DATA_END===/, `// ===DATA_START===
+        let archiveData = ${newJson};
+        // ===DATA_END===`);
+                
+                // 重新 Base64 编码
+                const newContentBase64 = btoa(encodeURIComponent(content).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+                    return String.fromCharCode('0x' + p1);
+                }));
+
+                // 提交更新后的 index.html
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Auto-update index.html map after deletion`,
+                        content: newContentBase64,
+                        sha: fileData.sha
+                    })
+                });
+            } catch (e) {
+                console.error("同步 index.html 失败:", e);
+            }
+        }
+
+        // ==== GitHub API 销毁文件逻辑 ====
         async function handleDeleteItem(year, month, day, index, filePath) {
-            if (!confirm("确定要删除这条记录并同步到 GitHub 吗？")) return;
+            if (!confirm("确定要彻底销毁这篇历史盲盒吗？")) return;
             
             let token = localStorage.getItem('gh_token');
             let user = localStorage.getItem('gh_user');
@@ -320,21 +373,17 @@
             const url = `https://api.github.com/repos/${repo}/contents/${targetRepoPath}`;
             
             try {
-                // 1. 获取文件的 SHA
                 const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
                 
                 if (getRes.status === 404) {
-                    alert("文件在远程仓库中不存在，将在本地视图中直接移除。");
-                    removeLocalData(year, month, day, index);
+                    // 若云端已被其他方式删除，直接清理本地状态
+                    markAsDeletedLocally(filePath, year, month, day, index);
                     return;
                 }
                 
                 if (!getRes.ok) throw new Error(await getRes.text());
-                
                 const fileData = await getRes.json();
-                const sha = fileData.sha;
 
-                // 2. 发起 DELETE 请求
                 const delRes = await fetch(url, {
                     method: 'DELETE',
                     headers: {
@@ -343,13 +392,15 @@
                     },
                     body: JSON.stringify({
                         message: `Delete ${filePath} via Web UI`,
-                        sha: sha
+                        sha: fileData.sha
                     })
                 });
 
                 if (delRes.ok) {
-                    alert("删除成功，并已同步到 GitHub！");
-                    removeLocalData(year, month, day, index);
+                    // 记录到黑名单防缓存，立即在UI中剔除
+                    markAsDeletedLocally(filePath, year, month, day, index);
+                    // 悄悄同步更新远端的 index.html (无冗余弹窗)
+                    syncIndexHtmlToGithub(token, user, repoName);
                 } else {
                     alert("删除失败: " + await delRes.text());
                 }
@@ -358,7 +409,13 @@
             }
         }
 
-        function removeLocalData(year, month, day, index) {
+        function markAsDeletedLocally(filePath, year, month, day, index) {
+            // 加入本地黑名单并持久化
+            if (!deletedPaths.includes(filePath)) {
+                deletedPaths.push(filePath);
+                localStorage.setItem('deleted_paths', JSON.stringify(deletedPaths));
+            }
+            // 从内存移除并重绘
             archiveData[year][month][day].splice(index, 1);
             if (archiveData[year][month][day].length === 0) {
                 delete archiveData[year][month][day];
