@@ -28,7 +28,7 @@ def fetch_wikipedia_history(month, day):
     m_str = f"{month:02d}"
     d_str = f"{day:02d}"
     url = f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/{m_str}/{d_str}"
-    
+
     headers = {'User-Agent': 'EchoesOfHistoryBot/1.0 (Contact: admin@nexus.hub)'}
     try:
         res = requests.get(url, headers=headers, timeout=15)
@@ -42,15 +42,15 @@ def extract_blind_box_events(data):
     """从海量历史中提炼并筛选出最具有戏剧冲突和灵感价值的 5 个“盲盒”事件"""
     if not data or 'selected' not in data:
         return []
-        
+
     raw_events = data['selected']
     scored_events = []
-    
+
     for ev in raw_events:
         text = ev.get('text', '')
         year = ev.get('year', 0)
         pages = ev.get('pages', [])
-        
+
         wiki_links = []
         for p in pages:
             if 'titles' in p and 'normalized' in p['titles']:
@@ -58,24 +58,24 @@ def extract_blind_box_events(data):
                     "title": p['titles']['normalized'],
                     "url": p.get('content_urls', {}).get('desktop', {}).get('page', '')
                 })
-        
+
         # 智能权重打分机制：文本包含特定历史偏好词时获得更高权重
         score = 0
         text_lower = text.lower()
         for kw in PREFERENCE_KEYWORDS:
             if kw in text_lower:
                 score += 10
-                
+
         # 加上随机微扰，确保每天的盲盒极具随机新鲜感
         score += random.randint(1, 5)
-        
+
         scored_events.append({
             "year": year,
             "text": text,
             "links": wiki_links,
             "score": score
         })
-        
+
     # 按权重分数从高到低排序，盲盒抽取前 5 强
     scored_events.sort(key=lambda x: x['score'], reverse=True)
     return scored_events[:5]
@@ -85,17 +85,17 @@ def save_daily_blind_box(events, now_obj):
     year_str, month_str = str(now_obj.year), str(now_obj.month)
     target_dir = os.path.join(BASE_DIR, year_str, month_str)
     os.makedirs(target_dir, exist_ok=True)
-    
+
     filename = f"{now_obj.year}_{now_obj.month}_{now_obj.day}_{now_obj.strftime('%H%M')}.html"
     html_path = os.path.join(target_dir, filename)
-    
+
     events_html = ""
     for idx, ev in enumerate(events):
         inspiration_prompt = random.choice(PROMPT_TEMPLATES)
         links_html = ""
         if ev['links']:
             links_html = '<div class="wiki-refs"><b>References:</b> ' + " | ".join([f'<a href="{l["url"]}" target="_blank">{l["title"]}</a>' for l in ev['links']]) + '</div>'
-            
+
         events_html += f"""
         <div class="archive-card">
             <div class="card-epoch">📍 ANNO DOMINI {ev['year']}</div>
@@ -242,17 +242,17 @@ def generate_chronicle_hub():
                             day = parts[2]
                             time_str = f"{parts[3][:2]}:{parts[3][2:]}"
                             file_path = f"{year}/{month}/{file}"
-                            
+
                             if day not in archive_data[year][month]:
                                 archive_data[year][month][day] = []
-                                
+
                             archive_data[year][month][day].append({
                                 "time": time_str,
                                 "path": file_path,
                                 "title": "🔮 历史灵感盲盒已送达"
                             })
                     except: pass
-                    
+
     json_data = json.dumps(archive_data)
 
     html_template = """<!DOCTYPE html>
@@ -292,7 +292,13 @@ def generate_chronicle_hub():
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
         /* 羊皮纸日历架构 */
-        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; }
+        .calendar-box { 
+            background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; 
+            padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; 
+            user-select: none; transition: border 0.3s, box-shadow 0.3s;
+        }
+        .calendar-box.edit-mode-active { box-shadow: 0 0 0 2px #d32f2f; }
+        
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
@@ -306,11 +312,22 @@ def generate_chronicle_hub():
         
         /* 盲盒抽取结果列表 */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
-        .feed-item { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); }
+        .feed-item-wrapper { display: flex; gap: 8px; align-items: stretch; width: 100%; }
+        .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); }
         .feed-item:active { transform: scale(0.99); background: #faf8f2; }
         .feed-time { font-size: 15px; font-weight: bold; color: var(--imperial); font-family: monospace; }
         .feed-title { font-size: 14px; font-weight: bold; color: var(--ink-dark); margin-left: 15px; text-align: right; flex: 1; }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
+        
+        /* 删除按钮系统 */
+        .del-btn { 
+            background: #d32f2f; color: #fff; border: none; border-radius: 12px; 
+            padding: 0 16px; font-size: 14px; font-weight: bold; cursor: pointer; 
+            display: none; transition: background 0.2s, transform 0.1s;
+        }
+        .del-btn:hover { background: #b71c1c; }
+        .del-btn:active { transform: scale(0.95); }
+        .edit-mode .del-btn { display: block; }
     </style>
 </head>
 <body>
@@ -335,7 +352,7 @@ def generate_chronicle_hub():
                     <button class="cal-btn" id="todayBtn">今日</button>
                 </div>
 
-                <div class="calendar-box">
+                <div class="calendar-box" id="calendarBox">
                     <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                     <div class="days-grid" id="daysGrid"></div>
                 </div>
@@ -356,6 +373,16 @@ def generate_chronicle_hub():
         const monthSelect = document.getElementById('monthSelect');
         const daysGrid = document.getElementById('daysGrid');
         const feedList = document.getElementById('feedList');
+        const calendarBox = document.getElementById('calendarBox');
+
+        // 双击日历切换编辑模式
+        calendarBox.addEventListener('dblclick', () => {
+            feedList.classList.toggle('edit-mode');
+            calendarBox.classList.toggle('edit-mode-active');
+            if (feedList.classList.contains('edit-mode') && !localStorage.getItem('eh_gh_repo')) {
+                alert("🛠 已进入编辑模式：\n你现在可以点击红色的按钮来删除条目，并直接将更改同步至 GitHub。");
+            }
+        });
 
         function initDropdowns() {
             const years = Object.keys(archiveData).map(Number).sort((a, b) => b - a);
@@ -403,12 +430,99 @@ def generate_chronicle_hub():
             
             if (dayData && dayData.length > 0) {
                 dayData.forEach(item => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'feed-item-wrapper';
+                    
                     const a = document.createElement('a'); a.href = item.path; a.className = 'feed-item';
                     a.innerHTML = `<span class="feed-time">${item.time}</span><span class="feed-title">${item.title} ➔</span>`;
-                    feedList.appendChild(a);
+                    
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'del-btn';
+                    delBtn.innerHTML = '🗑️';
+                    delBtn.onclick = (e) => {
+                        e.preventDefault();
+                        deleteToGitHub(item.path, wrapper, year, month, day);
+                    };
+                    
+                    wrapper.appendChild(a);
+                    wrapper.appendChild(delBtn);
+                    feedList.appendChild(wrapper);
                 });
             } else {
                 feedList.innerHTML = '<div class="empty-placeholder">该日未开启虚空历史盲盒</div>';
+            }
+        }
+
+        async function deleteToGitHub(path, elementToRemove, year, month, day) {
+            if (!confirm(`⚠️ 确定要永久删除该记录并同步至 GitHub 吗？\n文件: ${path}`)) return;
+            
+            let repo = localStorage.getItem('eh_gh_repo');
+            let token = localStorage.getItem('eh_gh_token');
+            
+            if (!repo) {
+                repo = prompt("请输入 GitHub 仓库名 (格式: owner/repo，例如 octocat/Hello-World):");
+                if (!repo) return;
+                localStorage.setItem('eh_gh_repo', repo);
+            }
+            if (!token) {
+                token = prompt("请输入具备该仓库操作权限的 GitHub Token (PAT):");
+                if (!token) return;
+                localStorage.setItem('eh_gh_token', token);
+            }
+            
+            const apiUrl = `https://api.github.com/repos/${repo}/contents/docs/${path}`;
+            
+            try {
+                // 1. 获取文件 SHA 状态
+                const getRes = await fetch(apiUrl, { headers: { 'Authorization': `token ${token}` } });
+                
+                if (getRes.status === 404) {
+                    alert("云端已不存在此文件，可能已经被删除了，正从本地视图中移除。");
+                    removeLocalItem(year, month, day, path, elementToRemove);
+                    return;
+                }
+                if (getRes.status === 401) {
+                    alert("Token 无效或已过期，请点击重新尝试以配置。");
+                    localStorage.removeItem('eh_gh_token');
+                    return;
+                }
+                if (!getRes.ok) throw new Error("获取文件状态失败");
+                
+                const fileData = await getRes.json();
+                
+                // 2. 发起 API 删除请求
+                const delRes = await fetch(apiUrl, {
+                    method: 'DELETE',
+                    headers: { 
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Archive: 删除了历史卷宗 ${path} (via Web UI)`,
+                        sha: fileData.sha
+                    })
+                });
+                
+                if (!delRes.ok) throw new Error("删除请求被远端拒绝");
+                
+                alert("✅ 已成功删除并同步至 GitHub！");
+                removeLocalItem(year, month, day, path, elementToRemove);
+                
+            } catch (error) {
+                alert("❌ 操作失败: " + error.message);
+                console.error(error);
+            }
+        }
+
+        function removeLocalItem(year, month, day, path, elementToRemove) {
+            elementToRemove.remove(); // 将DOM从页面移除
+            // 清理本地内存结构，防止重新渲染时二次出现
+            if (archiveData[year] && archiveData[year][month] && archiveData[year][month][day]) {
+                archiveData[year][month][day] = archiveData[year][month][day].filter(i => i.path !== path);
+                if (archiveData[year][month][day].length === 0) {
+                    renderCalendarGrid(year, month); // 清理日历下的圆点标识
+                    feedList.innerHTML = '<div class="empty-placeholder">该日未开启虚空历史盲盒</div>';
+                }
             }
         }
 
@@ -431,13 +545,13 @@ def generate_chronicle_hub():
 if __name__ == "__main__":
     os.makedirs(BASE_DIR, exist_ok=True)
     now = datetime.now(tz_utc_8)
-    
+
     # 自动获取今日维基百科快讯
     data = fetch_wikipedia_history(now.month, now.day)
     if data:
         best_events = extract_blind_box_events(data)
         if best_events:
             save_daily_blind_box(best_events, now)
-            
+
     # 全自动刷新日历主视图索引
     generate_chronicle_hub()
