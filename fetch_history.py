@@ -242,13 +242,12 @@ def generate_chronicle_hub():
                             archive_data[year][month][day].append({
                                 "time": time_str,
                                 "path": file_path,
-                                "title": "📌 单集精读: 历史灵感盲盒已送达"
+                                "title": "📌 单集精读: 历史盲盒已送达"
                             })
                     except: pass
 
     json_data = json.dumps(archive_data)
 
-    # 关键修改：插入 /*DATA_START*/ 和 /*DATA_END*/ 锚点，供前端直接替换
     html_template = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -278,19 +277,15 @@ def generate_chronicle_hub():
         .main-content { flex: 1; overflow-y: auto; padding: 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         
-        /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 15px; }
         .cal-btn { background: #8c1d40; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .select-shell { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; background: #fff; font-weight: bold; outline: none; }
         
-        /* 羊皮纸日历架构 */
         .calendar-box { 
             background: var(--card-bg); border-radius: 16px; 
             padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); margin-bottom: 20px; 
-            user-select: none; -webkit-user-select: none; transition: border 0.3s;
-            border: 2px solid transparent;
+            transition: border 0.3s; border: 2px solid transparent;
         }
-        /* 红色虚线边框，对齐图片UI */
         .calendar-box.edit-mode-active { border: 2px dashed var(--primary-red); }
         
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 15px; color: #b0b0b0; margin-bottom: 10px; padding-bottom: 5px; }
@@ -300,15 +295,14 @@ def generate_chronicle_hub():
         .day-cell.has-news { color: #333; }
         .day-cell.no-news { color: #ccc; }
         
-        /* 选中状态对齐图片 UI */
         .day-cell.selected { background: #ffebee; border: 1px solid var(--primary-red); color: var(--primary-red); font-weight: bold; }
         .day-cell.today { background: #f0f0f0; }
         .dot { width: 5px; height: 5px; background-color: var(--primary-red); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
-        /* 盲盒抽取结果列表 (精确复刻图片UI) */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
         .feed-item-wrapper { display: flex; gap: 10px; align-items: stretch; width: 100%; }
+        
         .feed-item { 
             flex: 1; 
             background: var(--card-bg); 
@@ -331,25 +325,22 @@ def generate_chronicle_hub():
         .feed-title { overflow: hidden; text-overflow: ellipsis; }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: #a0a0a0; font-size: 14px; }
         
-        /* 独立外置删除按钮 (复刻图片UI) */
         .del-btn { 
             background: #ff443a; 
             color: #fff; 
             border: none; 
-            border-radius: 14px; 
-            width: 60px; 
+            border-radius: 12px; 
+            width: 58px; 
             flex-shrink: 0;
-            display: none; 
+            display: none; /* 默认隐藏，由JS显式控制 */
             justify-content: center;
             align-items: center;
-            font-size: 24px; 
+            font-size: 22px; 
             cursor: pointer; 
             transition: transform 0.1s;
         }
         .del-btn:active { transform: scale(0.92); }
-        .edit-mode .del-btn { display: flex; }
-
-        /* 顶部加载条 */
+        
         #loadingBar { height: 3px; background: var(--primary-red); width: 0%; transition: width 0.3s; position: absolute; top: 0; left: 0; z-index: 30; }
     </style>
 </head>
@@ -375,9 +366,8 @@ def generate_chronicle_hub():
                     <button class="cal-btn" id="todayBtn">今日</button>
                 </div>
 
-                <!-- 连击此区域触发编辑模式 -->
                 <div class="calendar-box" id="calendarBox">
-                    <div class="weekdays"><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span><span>28</span></div>
+                    <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                     <div class="days-grid" id="daysGrid"></div>
                 </div>
 
@@ -387,7 +377,6 @@ def generate_chronicle_hub():
     </div>
 
     <script>
-        // 植入数据锚点
         const archiveData = /*DATA_START*/{REPLACEME_JSON_DATA}/*DATA_END*/;
         const today = new Date();
         let selectedYear = today.getFullYear();
@@ -402,20 +391,24 @@ def generate_chronicle_hub():
         const calendarBox = document.getElementById('calendarBox');
         const loadingBar = document.getElementById('loadingBar');
 
-        // ================= 基于时间差的移动端连击探测 =================
+        // ================= 100% 移植的时间戳双击判定 =================
         let lastTap = 0;
         calendarBox.addEventListener('click', function(e) {
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTap;
-            // 两次点击间隔小于 500ms 触发，完美绕开移动端原生 dblclick 限制
             if (tapLength < 500 && tapLength > 0) {
                 window.deleteMode = !window.deleteMode;
                 calendarBox.classList.toggle('edit-mode-active', window.deleteMode);
-                feedList.classList.toggle('edit-mode', window.deleteMode);
+                
+                // 放弃 CSS class 隐藏，直接 JS 遍历强制控制 style.display
+                const btns = document.querySelectorAll('.del-btn');
+                btns.forEach(btn => btn.style.display = window.deleteMode ? 'flex' : 'none');
+                
                 e.preventDefault();
             }
             lastTap = currentTime;
         });
+        // ============================================================
 
         function initDropdowns() {
             const years = Object.keys(archiveData).map(Number).sort((a, b) => b - a);
@@ -473,19 +466,20 @@ def generate_chronicle_hub():
                     const delBtn = document.createElement('button');
                     delBtn.className = 'del-btn';
                     delBtn.innerHTML = '🗑️';
+                    // 渲染时严格检查状态，确保切天时按钮依旧保持正确的显示状态
+                    if (window.deleteMode) delBtn.style.display = 'flex';
+                    
                     delBtn.onclick = async (e) => {
                         e.preventDefault();
                         if(confirm('⚠️ 确认删除此卷宗并同步移除云端记录吗？')) {
-                            // 在内存中先抹除
                             const pathToDelete = item.path;
                             dayData.splice(index, 1);
                             if (dayData.length === 0) delete archiveData[year][month][day];
                             
-                            // 立即无刷新渲染UI
+                            // 立即无刷新渲染UI (干掉了冗余弹窗，实现静默操作)
                             renderCalendarGrid(year, month);
                             renderBoxList(year, month, day);
                             
-                            // 开启静默双重云端同步
                             await syncDeleteToGithub(pathToDelete);
                         }
                     };
@@ -499,7 +493,6 @@ def generate_chronicle_hub():
             }
         }
 
-        // ================= 核心双重云端同步逻辑 =================
         async function syncDeleteToGithub(fileRelPath) {
             let repo = localStorage.getItem('eh_gh_repo');
             let token = localStorage.getItem('eh_gh_token');
@@ -518,14 +511,12 @@ def generate_chronicle_hub():
             try {
                 loadingBar.style.width = '20%';
                 
-                // 1. 删除具体的 HTML 文件
                 const targetFilePath = `docs/${fileRelPath}`;
                 const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetFilePath}`, {
                     headers: { 'Authorization': `token ${token}` }
                 });
                 
                 if (fileRes.status === 401) {
-                    alert("Token 无效，请清理浏览器缓存后重试。");
                     localStorage.removeItem('eh_gh_token');
                     loadingBar.style.width = '0%';
                     return;
@@ -545,14 +536,12 @@ def generate_chronicle_hub():
                 
                 loadingBar.style.width = '60%';
 
-                // 2. 更新远端 index.html 的 JSON 数据，防止刷新后幽灵复活
                 const idxRes = await fetch(`https://api.github.com/repos/${repo}/contents/docs/index.html`, {
                     headers: { 'Authorization': `token ${token}` }
                 });
                 const idxData = await idxRes.json();
                 const idxContent = decodeURIComponent(escape(atob(idxData.content)));
 
-                // 字符串替换定位
                 const dataStart = idxContent.indexOf('/*DATA_START*/') + 14;
                 const dataEnd = idxContent.indexOf('/*DATA_END*/');
                 const newJsonStr = JSON.stringify(archiveData);
@@ -575,7 +564,6 @@ def generate_chronicle_hub():
             } catch (error) {
                 console.error("Sync Error:", error);
                 loadingBar.style.width = '0%';
-                alert("远端删除过程出现错误，可能是网速慢或Token过期，请检查控制台。");
             }
         }
 
