@@ -576,3 +576,4 @@ if __name__ == "__main__":
             save_daily_blind_box(best_events, now)
 
     generate_chronicle_hub()
+
