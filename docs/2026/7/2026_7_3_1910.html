@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Echoes of History - Blind Box</title>
+    <style>
+        :root { 
+            --parchment-bg: #fcf8f2; 
+            --parchment-border: #e8dfd1; 
+            --ink-dark: #2c2421; 
+            --ink-muted: #70625a; 
+            --imperial-blue: #1a365d; 
+            --accent-crimson: #8c1d40; 
+        }
+        body { 
+            background: var(--parchment-bg); 
+            color: var(--ink-dark); 
+            font-family: "Georgia", Garamond, serif; 
+            margin: 0; padding: 0; 
+            -webkit-font-smoothing: antialiased; 
+            line-height: 1.6;
+        }
+        .nav-header {
+            background: rgba(252, 248, 242, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--parchment-border);
+            padding: 15px 20px;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-header a {
+            color: var(--imperial-blue);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95rem;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 15px 60px 15px; }
+        
+        .box-title { text-align: center; margin-bottom: 40px; border-bottom: 2px double var(--parchment-border); padding-bottom: 20px; }
+        .box-title h1 { font-size: 2.2rem; font-weight: normal; margin: 0 0 10px 0; color: var(--accent-crimson); font-style: italic; }
+        .box-title p { margin: 0; color: var(--ink-muted); font-size: 0.95rem; letter-spacing: 1px; text-transform: uppercase; }
+        
+        .archive-card {
+            background: #ffffff;
+            border: 1px solid var(--parchment-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(44,36,33,0.03);
+            position: relative;
+        }
+        .card-epoch {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--accent-crimson);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .card-text {
+            font-size: 1.15rem;
+            color: var(--ink-dark);
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .wiki-refs {
+            font-size: 0.85rem;
+            color: var(--ink-muted);
+            border-top: 1px dashed var(--parchment-border);
+            padding-top: 12px;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+        }
+        .wiki-refs::-webkit-scrollbar { display: none; }
+        .wiki-refs a { color: var(--imperial-blue); text-decoration: none; font-weight: 500; margin: 0 2px; }
+        .wiki-refs a:hover { text-decoration: underline; }
+        
+        .inspiration-box {
+            background: #fdfbf7;
+            border-left: 3px solid var(--imperial-blue);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+        }
+        .prompt-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--imperial-blue);
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .prompt-body { font-size: 0.95rem; color: var(--ink-dark); font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="nav-header">
+        <a href="../../index.html">📜 Return to Chronicle</a>
+        <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">2026-07-03</span>
+    </div>
+    <div class="container">
+        <div class="box-title">
+            <h1>Echoes of History</h1>
+            <p>~ 今日份虚空历史盲盒 ~</p>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 324</div>
+            <div class="card-text">Civil wars of the Tetrarchy: Roman emperor Constantine the Great defeated his former colleague Licinius at the Battle of Adrianople.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Civil_wars_of_the_Tetrarchy" target="_blank">Civil wars of the Tetrarchy</a> | <a href="https://en.wikipedia.org/wiki/Constantine_the_Great" target="_blank">Constantine the Great</a> | <a href="https://en.wikipedia.org/wiki/Licinius" target="_blank">Licinius</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Adrianople_(324)" target="_blank">Battle of Adrianople (324)</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">⚔️ 世界观种子：如果事件中的核心矛盾发生在一个魔幻/蒸汽朋克世界，历史会如何脱轨？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1988</div>
+            <div class="card-text">The US Navy warship Vincennes shot down Iran Air Flight 655 over the Persian Gulf, killing all 290 people aboard.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/United_States_Navy" target="_blank">United States Navy</a> | <a href="https://en.wikipedia.org/wiki/USS_Vincennes_(CG-49)" target="_blank">USS Vincennes (CG-49)</a> | <a href="https://en.wikipedia.org/wiki/Iran_Air_Flight_655" target="_blank">Iran Air Flight 655</a> | <a href="https://en.wikipedia.org/wiki/Persian_Gulf" target="_blank">Persian Gulf</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">📜 编年史裂痕：如果某个关键人物在事件发生的五分钟前改变了主意，后世的版图会发生什么巨变？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1940</div>
+            <div class="card-text">Second World War: The Royal Navy attacked the French fleet at Mers El Kébir (pictured), fearing that the ships would fall into Axis hands after the French–German armistice.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/World_War_II" target="_blank">World War II</a> | <a href="https://en.wikipedia.org/wiki/Royal_Navy" target="_blank">Royal Navy</a> | <a href="https://en.wikipedia.org/wiki/Attack_on_Mers-el-K%C3%A9bir" target="_blank">Attack on Mers-el-Kébir</a> | <a href="https://en.wikipedia.org/wiki/Mers_El_K%C3%A9bir" target="_blank">Mers El Kébir</a> | <a href="https://en.wikipedia.org/wiki/Axis_powers" target="_blank">Axis powers</a> | <a href="https://en.wikipedia.org/wiki/Armistice_of_22_June_1940" target="_blank">Armistice of 22 June 1940</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1778</div>
+            <div class="card-text">American Revolutionary War: Loyalists and Iroquois killed over 300 Patriots at the Battle of Wyoming in Pennsylvania.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/American_Revolutionary_War" target="_blank">American Revolutionary War</a> | <a href="https://en.wikipedia.org/wiki/Loyalist_(American_Revolution)" target="_blank">Loyalist (American Revolution)</a> | <a href="https://en.wikipedia.org/wiki/Haudenosaunee" target="_blank">Haudenosaunee</a> | <a href="https://en.wikipedia.org/wiki/Patriot_(American_Revolution)" target="_blank">Patriot (American Revolution)</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Wyoming" target="_blank">Battle of Wyoming</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1754</div>
+            <div class="card-text">French and Indian War: George Washington surrendered Fort Necessity in Pennsylvania, the only military surrender in his career.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/French_and_Indian_War" target="_blank">French and Indian War</a> | <a href="https://en.wikipedia.org/wiki/George_Washington" target="_blank">George Washington</a> | <a href="https://en.wikipedia.org/wiki/Fort_Necessity_National_Battlefield" target="_blank">Fort Necessity National Battlefield</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Fort_Necessity" target="_blank">Battle of Fort Necessity</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🏰 空间构建：以此事件发生的核心场所为原型，描绘一个充满了悬疑与权力斗争的封闭舞台。</div>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>
