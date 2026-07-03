@@ -267,7 +267,7 @@ def generate_chronicle_hub():
             --parchment-border: #e6dfd3; 
             --ink-dark: #2a2421; 
             --ink-muted: #7c7066; 
-            --imperial: #ff3b30; /* Adjusted to match reference image 1000121759.png red */
+            --imperial: #ff3b30; 
             --imperial-dark: #8c1d40;
             --card-bg: #ffffff;
         }
@@ -293,7 +293,7 @@ def generate_chronicle_hub():
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
         /* 羊皮纸日历架构 */
-        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
+        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; transition: border 0.3s ease; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
@@ -314,12 +314,9 @@ def generate_chronicle_hub():
         .feed-title { font-size: 14px; font-weight: bold; color: var(--ink-dark); margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
         
-        /* 独立删除按钮 */
+        /* 独立删除按钮 (默认隐藏) */
         .delete-btn { display: none; width: 56px; background-color: #ff3b30; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(255,59,48,0.2); transition: transform 0.1s; flex-shrink: 0; }
         .delete-btn:active { transform: scale(0.92); }
-        .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
-        
-        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
@@ -344,7 +341,7 @@ def generate_chronicle_hub():
                     <button class="cal-btn" id="todayBtn">今日</button>
                 </div>
 
-                <!-- 日历区域：双击/连按呼出删除模式 -->
+                <!-- 日历区域：全量 click 监听器 -->
                 <div class="calendar-box" id="calendarBox">
                     <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                     <div class="days-grid" id="daysGrid"></div>
@@ -361,7 +358,7 @@ def generate_chronicle_hub():
         let selectedYear = today.getFullYear();
         let selectedMonth = today.getMonth() + 1;
         let selectedDay = today.getDate();
-        let isDeleteMode = false; // 删除模式状态
+        window.deleteMode = false; // 全局删除模式状态
 
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
@@ -369,30 +366,26 @@ def generate_chronicle_hub():
         const feedList = document.getElementById('feedList');
         const calendarBox = document.getElementById('calendarBox');
 
-        // ==== 移动端双击检测 ====
-        let lastTapTime = 0;
-        calendarBox.addEventListener('touchstart', function(e) {
+        // ==== 统一 Click 双击检测 ====
+        let lastTap = 0;
+        calendarBox.addEventListener('click', function(e) {
             const currentTime = new Date().getTime();
-            const tapLength = currentTime - lastTapTime;
-            if (tapLength < 400 && tapLength > 0) {
-                e.preventDefault(); 
-                toggleDeleteMode();
+            const tapLength = currentTime - lastTap;
+            
+            if (tapLength < 500 && tapLength > 0) {
+                window.deleteMode = !window.deleteMode;
+                
+                // 仅改变显示状态，不销毁 DOM
+                const btns = document.querySelectorAll('.delete-btn');
+                btns.forEach(btn => btn.style.display = window.deleteMode ? 'flex' : 'none');
+                
+                // 给日历框添加一点轻量级视觉反馈
+                calendarBox.style.border = window.deleteMode ? "1px solid #ff3b30" : "1px solid var(--parchment-border)";
+                
+                e.preventDefault();
             }
-            lastTapTime = currentTime;
-        }, {passive: false});
-        
-        // 兼容PC端双击
-        calendarBox.addEventListener('dblclick', toggleDeleteMode);
-
-        function toggleDeleteMode() {
-            isDeleteMode = !isDeleteMode;
-            renderBoxList(selectedYear, selectedMonth, selectedDay);
-            if (isDeleteMode) {
-                // 提供一点视觉反馈
-                calendarBox.style.border = "1px solid #ff3b30";
-                setTimeout(() => calendarBox.style.border = "", 300);
-            }
-        }
+            lastTap = currentTime;
+        });
 
         function initDropdowns() {
             const years = Object.keys(archiveData).map(Number).sort((a, b) => b - a);
@@ -425,8 +418,144 @@ def generate_chronicle_hub():
                 if (year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate()) cell.classList.add('today');
                 if (year === selectedYear && month === selectedMonth && day === selectedDay) cell.classList.add('selected');
                 
+                // 点击日期单元格正常渲染下方列表
                 cell.addEventListener('click', () => {
                     selectedYear = year; selectedMonth = month; selectedDay = day;
                     renderCalendarGrid(year, month); renderBoxList(year, month, day);
                 });
                 daysGrid.appendChild(cell);
+            }
+        }
+
+        function renderBoxList(year, month, day) {
+            feedList.innerHTML = '';
+            const monthData = (archiveData[year] && archiveData[year][month]) ? archiveData[year][month] : null;
+            const dayData = monthData ? monthData[day] : null;
+            
+            if (dayData && dayData.length > 0) {
+                dayData.forEach((item, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'feed-item-wrapper';
+
+                    const a = document.createElement('a'); 
+                    a.href = item.path; 
+                    a.className = 'feed-item';
+                    a.innerHTML = `<span class="feed-title">📌 单集精读: ${item.title.replace('🔮 ', '')}</span>`;
+                    wrapper.appendChild(a);
+
+                    // 始终创建删除按钮，通过 window.deleteMode 维持生命周期内显隐状态一致性
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'delete-btn';
+                    delBtn.innerHTML = '🗑️'; 
+                    if (window.deleteMode) delBtn.style.display = 'flex';
+                    
+                    delBtn.onclick = (e) => {
+                        e.preventDefault();
+                        handleDeleteItem(year, month, day, index, item.path);
+                    };
+                    wrapper.appendChild(delBtn);
+
+                    feedList.appendChild(wrapper);
+                });
+            } else {
+                feedList.innerHTML = '<div class="empty-placeholder">该日未开启虚空历史盲盒</div>';
+            }
+        }
+
+        // ==== GitHub API 同步删除逻辑 ====
+        async function handleDeleteItem(year, month, day, index, filePath) {
+            if (!confirm("确定要删除这条记录并同步到 GitHub 吗？")) return;
+            
+            let token = localStorage.getItem('gh_token');
+            let repo = localStorage.getItem('gh_repo');
+            
+            if (!token || !repo) {
+                token = prompt("【首次设置】请输入 GitHub Personal Access Token (需包含 repo 权限):");
+                if (!token) return;
+                repo = prompt("请输入仓库地址 (格式: 用户名/仓库名，例如: zhangsan/history-box):");
+                if (!repo) return;
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_repo', repo);
+            }
+
+            const targetRepoPath = `docs/${filePath}`;
+            const url = `https://api.github.com/repos/${repo}/contents/${targetRepoPath}`;
+            
+            try {
+                const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+                
+                if (getRes.status === 404) {
+                    // 若云端不存在，直接静默清理本地缓存
+                    removeLocalData(year, month, day, index);
+                    return;
+                }
+                
+                if (!getRes.ok) throw new Error(await getRes.text());
+                
+                const fileData = await getRes.json();
+                const sha = fileData.sha;
+
+                const delRes = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${filePath} via Web UI`,
+                        sha: sha
+                    })
+                });
+
+                if (delRes.ok) {
+                    // 消除冗余成功通知，静默移除数据刷新 UI
+                    removeLocalData(year, month, day, index);
+                } else {
+                    alert("删除失败: " + await delRes.text());
+                }
+            } catch (e) {
+                alert("请求出错: " + e.message);
+                if(e.message.includes("Bad credentials")) {
+                    localStorage.removeItem('gh_token');
+                }
+            }
+        }
+
+        function removeLocalData(year, month, day, index) {
+            archiveData[year][month][day].splice(index, 1);
+            if (archiveData[year][month][day].length === 0) {
+                delete archiveData[year][month][day];
+            }
+            renderCalendarGrid(selectedYear, selectedMonth);
+            renderBoxList(selectedYear, selectedMonth, selectedDay);
+        }
+
+        yearSelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); });
+        monthSelect.addEventListener('change', (e) => { selectedMonth = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); });
+        document.getElementById('prevBtn').addEventListener('click', () => { selectedMonth--; if (selectedMonth < 1) { selectedMonth = 12; selectedYear--; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); });
+        document.getElementById('nextBtn').addEventListener('click', () => { selectedMonth++; if (selectedMonth > 12) { selectedMonth = 1; selectedYear++; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); });
+        document.getElementById('todayBtn').addEventListener('click', () => { selectedYear = today.getFullYear(); selectedMonth = today.getMonth() + 1; selectedDay = today.getDate(); yearSelect.value = selectedYear; monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
+
+        initDropdowns(); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay);
+    </script>
+</body>
+</html>"""
+
+    final_html = html_template.replace("{REPLACEME_JSON_DATA}", json_data)
+    with open(os.path.join(BASE_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(final_html)
+    print("🚀 主轴编年史大厅 index.html 编译同步完成！")
+
+if __name__ == "__main__":
+    os.makedirs(BASE_DIR, exist_ok=True)
+    now = datetime.now(tz_utc_8)
+
+    # 自动获取今日维基百科快讯
+    data = fetch_wikipedia_history(now.month, now.day)
+    if data:
+        best_events = extract_blind_box_events(data)
+        if best_events:
+            save_daily_blind_box(best_events, now)
+
+    # 全自动刷新日历主视图索引
+    generate_chronicle_hub()
