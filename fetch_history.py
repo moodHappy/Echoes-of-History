@@ -1,4 +1,4 @@
-import os
+Import os
 import requests
 import json
 import random
@@ -448,7 +448,7 @@ def generate_chronicle_hub():
                     a.className = 'feed-item';
                     
                     // 为了高度还原图片 1000121759.png 的文案样式
-                    a.innerHTML = `<span class="feed-title">📌 单集精读: ${item.title.replace('🔮 ', '')}</span>`;
+                    a.innerHTML = `<span class="feed-title">${item.title.replace('🔮 ', '')}</span>`;
                     
                     wrapper.appendChild(a);
 
