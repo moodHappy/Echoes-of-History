@@ -1,9 +1,12 @@
 name: Echoes of History Automatons
 
 on:
+  push:
+    paths:
+      - 'fetch_history.py'   # 监听：一旦这个 py 文件被修改并 push，就会自动触发运行一次
   schedule:
-    - cron: '0 15 * * *'  # 每天自动为你开启时间盲盒
-  workflow_dispatch:     # 随时手动召唤打工人
+    - cron: '0 15 * * *'     # 每天自动为你开启时间盲盒
+  workflow_dispatch:         # 随时手动召唤打工人
 
 jobs:
   build:
