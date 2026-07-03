@@ -267,9 +267,10 @@ def generate_chronicle_hub():
             --parchment-border: #e6dfd3; 
             --ink-dark: #2a2421; 
             --ink-muted: #7c7066; 
-            --imperial: #ff3b30; /* Adjusted to match reference image 1000121759.png red */
+            --imperial: #ff3b30; 
             --imperial-dark: #8c1d40;
             --card-bg: #ffffff;
+            --theme-blue: #4285f4;
         }
         body, html { 
             font-family: "Georgia", -apple-system, BlinkMacSystemFont, serif; 
@@ -279,16 +280,21 @@ def generate_chronicle_hub():
             height: 100%;
         }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
-        .header-panel { text-align: center; padding: 35px 20px 20px 20px; border-bottom: 1px dashed var(--parchment-border); }
+        
+        .header-panel { text-align: center; padding: 35px 20px 20px 20px; border-bottom: 1px dashed var(--parchment-border); position: relative; }
         .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial-dark); }
         .header-panel p { margin: 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted); }
         
+        /* 设置按钮 */
+        .settings-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; cursor: pointer; color: #888; transition: transform 0.3s ease, color 0.2s; user-select: none; }
+        .settings-btn:active, .settings-btn:hover { transform: rotate(90deg); color: #555; }
+
         .main-content { flex: 1; overflow-y: auto; padding: 20px 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         
         /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .cal-btn { background: var(--imperial-dark); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
@@ -305,13 +311,12 @@ def generate_chronicle_hub():
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
-        /* 盲盒抽取结果列表 (兼容双击删除UI) */
+        /* 盲盒抽取结果列表 */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
         .feed-item-wrapper { display: flex; align-items: stretch; gap: 10px; width: 100%; transition: all 0.3s ease; }
         .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); min-width: 0; }
         .feed-item:active { transform: scale(0.99); background: #faf8f2; }
-        .feed-time { font-size: 15px; font-weight: bold; color: var(--imperial); font-family: monospace; white-space: nowrap; }
-        .feed-title { font-size: 14px; font-weight: bold; color: var(--ink-dark); margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
+        .feed-title { font-size: 14px; font-weight: bold; margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
         
         /* 独立删除按钮 */
@@ -320,11 +325,38 @@ def generate_chronicle_hub():
         .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* ======== 模态框样式 (本地配置中心) ======== */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
+        
+        .modal-box { background: #fff; width: 85%; max-width: 360px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .modal-title { font-size: 20px; font-weight: bold; color: #222; margin: 0 0 8px 0; }
+        .modal-subtitle { font-size: 12px; color: #777; margin-bottom: 22px; line-height: 1.5; }
+        
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; font-weight: bold; }
+        .form-group input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
+        .form-group input:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1); }
+        
+        /* 模拟图中的 Token 浅色背景 */
+        #inputToken { background-color: #f0f4ff; border-color: #dbe4ff; }
+        #inputToken:focus { background-color: #fff; }
+
+        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
+        .modal-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; transition: opacity 0.2s; }
+        .btn-cancel { background: #f0f0f0; color: #444; }
+        .btn-save { background: var(--theme-blue); color: #fff; }
+        .btn-cancel:active { background: #e4e4e4; }
+        .btn-save:active { background: #3367d6; }
+        
+        @keyframes fadeInModal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
     <div class="app-layout">
         <div class="header-panel">
+            <div class="settings-btn" id="btnSettings" title="本地配置中心">⚙️</div>
             <h1>Echoes of History</h1>
             <p>~ 赛博档案馆 / 灵感随想枢纽 ~</p>
         </div>
@@ -341,7 +373,7 @@ def generate_chronicle_hub():
                         <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
                     </select>
                     <button class="cal-btn" id="nextBtn">&gt;</button>
-                    <button class="cal-btn" id="todayBtn">今日</button>
+                    <button class="cal-btn" id="todayBtn">回到今天</button>
                 </div>
 
                 <!-- 日历区域：双击/连按呼出删除模式 -->
@@ -355,19 +387,78 @@ def generate_chronicle_hub():
         </div>
     </div>
 
+    <!-- 本地配置中心 Modals -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal-box">
+            <h2 class="modal-title">本地配置中心</h2>
+            <p class="modal-subtitle">密钥仅保存在您的浏览器本地，不会上传到任何第三方服务器。</p>
+            
+            <div class="form-group">
+                <label>GitHub Personal Access Token</label>
+                <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+            </div>
+            <div class="form-group">
+                <label>GitHub 用户名</label>
+                <input type="text" id="inputUser" placeholder="例如: moodHappy">
+            </div>
+            <div class="form-group">
+                <label>GitHub 仓库名</label>
+                <input type="text" id="inputRepo" placeholder="例如: bbc-news-archive">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" id="btnCancel">取消</button>
+                <button class="modal-btn btn-save" id="btnSave">保存配置</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const archiveData = {REPLACEME_JSON_DATA};
         const today = new Date();
         let selectedYear = today.getFullYear();
         let selectedMonth = today.getMonth() + 1;
         let selectedDay = today.getDate();
-        let isDeleteMode = false; // 删除模式状态
+        let isDeleteMode = false;
 
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
         const daysGrid = document.getElementById('daysGrid');
         const feedList = document.getElementById('feedList');
         const calendarBox = document.getElementById('calendarBox');
+
+        // ---- 配置中心逻辑 ----
+        const configModal = document.getElementById('configModal');
+        const btnSettings = document.getElementById('btnSettings');
+        const btnCancel = document.getElementById('btnCancel');
+        const btnSave = document.getElementById('btnSave');
+        const inputToken = document.getElementById('inputToken');
+        const inputUser = document.getElementById('inputUser');
+        const inputRepo = document.getElementById('inputRepo');
+
+        function openConfigModal() {
+            inputToken.value = localStorage.getItem('gh_token') || '';
+            inputUser.value = localStorage.getItem('gh_user') || '';
+            inputRepo.value = localStorage.getItem('gh_repo') || '';
+            configModal.classList.add('show');
+        }
+
+        btnSettings.addEventListener('click', openConfigModal);
+
+        btnCancel.addEventListener('click', () => {
+            configModal.classList.remove('show');
+        });
+
+        configModal.addEventListener('click', (e) => {
+            if (e.target === configModal) configModal.classList.remove('show');
+        });
+
+        btnSave.addEventListener('click', () => {
+            localStorage.setItem('gh_token', inputToken.value.trim());
+            localStorage.setItem('gh_user', inputUser.value.trim());
+            localStorage.setItem('gh_repo', inputRepo.value.trim());
+            configModal.classList.remove('show');
+        });
 
         // ==== 移动端双击检测 ====
         let lastTapTime = 0;
@@ -381,16 +472,14 @@ def generate_chronicle_hub():
             lastTapTime = currentTime;
         }, {passive: false});
         
-        // 兼容PC端双击
         calendarBox.addEventListener('dblclick', toggleDeleteMode);
 
         function toggleDeleteMode() {
             isDeleteMode = !isDeleteMode;
             renderBoxList(selectedYear, selectedMonth, selectedDay);
             if (isDeleteMode) {
-                // 提供一点视觉反馈
                 calendarBox.style.border = "1px solid #ff3b30";
-                setTimeout(() => calendarBox.style.border = "", 300);
+                setTimeout(() => calendarBox.style.border = "1px solid var(--parchment-border)", 300);
             }
         }
 
@@ -447,7 +536,6 @@ def generate_chronicle_hub():
                     a.href = item.path; 
                     a.className = 'feed-item';
                     
-                    // 为了高度还原图片 1000121759.png 的文案样式
                     a.innerHTML = `<span class="feed-title">${item.title.replace('🔮 ', '')}</span>`;
                     
                     wrapper.appendChild(a);
@@ -455,7 +543,7 @@ def generate_chronicle_hub():
                     if (isDeleteMode) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'delete-btn show';
-                        delBtn.innerHTML = '🗑️'; // 也可以用SVG图标
+                        delBtn.innerHTML = '🗑️';
                         delBtn.onclick = (e) => {
                             e.preventDefault();
                             handleDeleteItem(year, month, day, index, item.path);
@@ -475,18 +563,16 @@ def generate_chronicle_hub():
             if (!confirm("确定要删除这条记录并同步到 GitHub 吗？")) return;
             
             let token = localStorage.getItem('gh_token');
-            let repo = localStorage.getItem('gh_repo');
+            let user = localStorage.getItem('gh_user');
+            let repoName = localStorage.getItem('gh_repo');
             
-            if (!token || !repo) {
-                token = prompt("【首次设置】请输入 GitHub Personal Access Token (需包含 repo 权限):");
-                if (!token) return;
-                repo = prompt("请输入仓库地址 (格式: 用户名/仓库名，例如: zhangsan/history-box):");
-                if (!repo) return;
-                localStorage.setItem('gh_token', token);
-                localStorage.setItem('gh_repo', repo);
+            if (!token || !user || !repoName) {
+                alert("缺少 GitHub 配置，请先在本地配置中心（右上角齿轮 ⚙️）进行设置。");
+                openConfigModal();
+                return;
             }
 
-            // 根据 Python 脚本逻辑，文件位于 docs 目录下
+            const repo = `${user}/${repoName}`;
             const targetRepoPath = `docs/${filePath}`;
             const url = `https://api.github.com/repos/${repo}/contents/${targetRepoPath}`;
             
@@ -526,9 +612,6 @@ def generate_chronicle_hub():
                 }
             } catch (e) {
                 alert("请求出错: " + e.message);
-                if(e.message.includes("Bad credentials")) {
-                    localStorage.removeItem('gh_token');
-                }
             }
         }
 
@@ -541,10 +624,10 @@ def generate_chronicle_hub():
             renderBoxList(selectedYear, selectedMonth, selectedDay);
         }
 
-        yearSelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); });
-        monthSelect.addEventListener('change', (e) => { selectedMonth = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); });
-        document.getElementById('prevBtn').addEventListener('click', () => { selectedMonth--; if (selectedMonth < 1) { selectedMonth = 12; selectedYear--; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); });
-        document.getElementById('nextBtn').addEventListener('click', () => { selectedMonth++; if (selectedMonth > 12) { selectedMonth = 1; selectedYear++; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); });
+        yearSelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
+        monthSelect.addEventListener('change', (e) => { selectedMonth = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
+        document.getElementById('prevBtn').addEventListener('click', () => { selectedMonth--; if (selectedMonth < 1) { selectedMonth = 12; selectedYear--; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay);});
+        document.getElementById('nextBtn').addEventListener('click', () => { selectedMonth++; if (selectedMonth > 12) { selectedMonth = 1; selectedYear++; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
         document.getElementById('todayBtn').addEventListener('click', () => { selectedYear = today.getFullYear(); selectedMonth = today.getMonth() + 1; selectedDay = today.getDate(); yearSelect.value = selectedYear; monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
 
         initDropdowns(); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay);
