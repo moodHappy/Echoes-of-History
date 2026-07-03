@@ -10,7 +10,8 @@
             --parchment-border: #e6dfd3; 
             --ink-dark: #2a2421; 
             --ink-muted: #7c7066; 
-            --imperial: #8c1d40; 
+            --imperial: #ff3b30; /* Adjusted to match reference image 1000121759.png red */
+            --imperial-dark: #8c1d40;
             --card-bg: #ffffff;
         }
         body, html { 
@@ -22,7 +23,7 @@
         }
         .app-layout { display: flex; flex-direction: column; height: 100%; }
         .header-panel { text-align: center; padding: 35px 20px 20px 20px; border-bottom: 1px dashed var(--parchment-border); }
-        .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial); }
+        .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial-dark); }
         .header-panel p { margin: 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted); }
         
         .main-content { flex: 1; overflow-y: auto; padding: 20px 15px; }
@@ -30,12 +31,12 @@
         
         /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .cal-btn { background: var(--imperial); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .cal-btn { background: var(--imperial-dark); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
         /* 羊皮纸日历架构 */
-        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; }
+        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
@@ -47,13 +48,21 @@
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
-        /* 盲盒抽取结果列表 */
+        /* 盲盒抽取结果列表 (兼容双击删除UI) */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
-        .feed-item { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); }
+        .feed-item-wrapper { display: flex; align-items: stretch; gap: 10px; width: 100%; transition: all 0.3s ease; }
+        .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); min-width: 0; }
         .feed-item:active { transform: scale(0.99); background: #faf8f2; }
-        .feed-time { font-size: 15px; font-weight: bold; color: var(--imperial); font-family: monospace; }
-        .feed-title { font-size: 14px; font-weight: bold; color: var(--ink-dark); margin-left: 15px; text-align: right; flex: 1; }
+        .feed-time { font-size: 15px; font-weight: bold; color: var(--imperial); font-family: monospace; white-space: nowrap; }
+        .feed-title { font-size: 14px; font-weight: bold; color: var(--ink-dark); margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
+        
+        /* 独立删除按钮 */
+        .delete-btn { display: none; width: 56px; background-color: #ff3b30; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(255,59,48,0.2); transition: transform 0.1s; flex-shrink: 0; }
+        .delete-btn:active { transform: scale(0.92); }
+        .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
@@ -78,7 +87,8 @@
                     <button class="cal-btn" id="todayBtn">今日</button>
                 </div>
 
-                <div class="calendar-box">
+                <!-- 日历区域：双击/连按呼出删除模式 -->
+                <div class="calendar-box" id="calendarBox">
                     <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
                     <div class="days-grid" id="daysGrid"></div>
                 </div>
@@ -89,16 +99,43 @@
     </div>
 
     <script>
-        const archiveData = {"2026": {"7": {"3": [{"time": "17:38", "path": "2026/7/2026_7_3_1738.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:46", "path": "2026/7/2026_7_3_0046.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
+        const archiveData = {"2026": {"7": {"3": [{"time": "18:57", "path": "2026/7/2026_7_3_1857.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:46", "path": "2026/7/2026_7_3_0046.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
         const today = new Date();
         let selectedYear = today.getFullYear();
         let selectedMonth = today.getMonth() + 1;
         let selectedDay = today.getDate();
+        let isDeleteMode = false; // 删除模式状态
 
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
         const daysGrid = document.getElementById('daysGrid');
         const feedList = document.getElementById('feedList');
+        const calendarBox = document.getElementById('calendarBox');
+
+        // ==== 移动端双击检测 ====
+        let lastTapTime = 0;
+        calendarBox.addEventListener('touchstart', function(e) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            if (tapLength < 400 && tapLength > 0) {
+                e.preventDefault(); 
+                toggleDeleteMode();
+            }
+            lastTapTime = currentTime;
+        }, {passive: false});
+        
+        // 兼容PC端双击
+        calendarBox.addEventListener('dblclick', toggleDeleteMode);
+
+        function toggleDeleteMode() {
+            isDeleteMode = !isDeleteMode;
+            renderBoxList(selectedYear, selectedMonth, selectedDay);
+            if (isDeleteMode) {
+                // 提供一点视觉反馈
+                calendarBox.style.border = "1px solid #ff3b30";
+                setTimeout(() => calendarBox.style.border = "", 300);
+            }
+        }
 
         function initDropdowns() {
             const years = Object.keys(archiveData).map(Number).sort((a, b) => b - a);
@@ -145,14 +182,106 @@
             const dayData = monthData ? monthData[day] : null;
             
             if (dayData && dayData.length > 0) {
-                dayData.forEach(item => {
-                    const a = document.createElement('a'); a.href = item.path; a.className = 'feed-item';
-                    a.innerHTML = `<span class="feed-time">${item.time}</span><span class="feed-title">${item.title} ➔</span>`;
-                    feedList.appendChild(a);
+                dayData.forEach((item, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'feed-item-wrapper';
+
+                    const a = document.createElement('a'); 
+                    a.href = item.path; 
+                    a.className = 'feed-item';
+                    
+                    // 为了高度还原图片 1000121759.png 的文案样式
+                    a.innerHTML = `<span class="feed-title">📌 单集精读: ${item.title.replace('🔮 ', '')}</span>`;
+                    
+                    wrapper.appendChild(a);
+
+                    if (isDeleteMode) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'delete-btn show';
+                        delBtn.innerHTML = '🗑️'; // 也可以用SVG图标
+                        delBtn.onclick = (e) => {
+                            e.preventDefault();
+                            handleDeleteItem(year, month, day, index, item.path);
+                        };
+                        wrapper.appendChild(delBtn);
+                    }
+
+                    feedList.appendChild(wrapper);
                 });
             } else {
                 feedList.innerHTML = '<div class="empty-placeholder">该日未开启虚空历史盲盒</div>';
             }
+        }
+
+        // ==== GitHub API 同步删除逻辑 ====
+        async function handleDeleteItem(year, month, day, index, filePath) {
+            if (!confirm("确定要删除这条记录并同步到 GitHub 吗？")) return;
+            
+            let token = localStorage.getItem('gh_token');
+            let repo = localStorage.getItem('gh_repo');
+            
+            if (!token || !repo) {
+                token = prompt("【首次设置】请输入 GitHub Personal Access Token (需包含 repo 权限):");
+                if (!token) return;
+                repo = prompt("请输入仓库地址 (格式: 用户名/仓库名，例如: zhangsan/history-box):");
+                if (!repo) return;
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_repo', repo);
+            }
+
+            // 根据 Python 脚本逻辑，文件位于 docs 目录下
+            const targetRepoPath = `docs/${filePath}`;
+            const url = `https://api.github.com/repos/${repo}/contents/${targetRepoPath}`;
+            
+            try {
+                // 1. 获取文件的 SHA
+                const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
+                
+                if (getRes.status === 404) {
+                    alert("文件在远程仓库中不存在，将在本地视图中直接移除。");
+                    removeLocalData(year, month, day, index);
+                    return;
+                }
+                
+                if (!getRes.ok) throw new Error(await getRes.text());
+                
+                const fileData = await getRes.json();
+                const sha = fileData.sha;
+
+                // 2. 发起 DELETE 请求
+                const delRes = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Delete ${filePath} via Web UI`,
+                        sha: sha
+                    })
+                });
+
+                if (delRes.ok) {
+                    alert("删除成功，并已同步到 GitHub！");
+                    removeLocalData(year, month, day, index);
+                } else {
+                    alert("删除失败: " + await delRes.text());
+                }
+            } catch (e) {
+                alert("请求出错: " + e.message);
+                if(e.message.includes("Bad credentials")) {
+                    localStorage.removeItem('gh_token');
+                }
+            }
+        }
+
+        function removeLocalData(year, month, day, index) {
+            archiveData[year][month][day].splice(index, 1);
+            if (archiveData[year][month][day].length === 0) {
+                delete archiveData[year][month][day];
+            }
+            renderCalendarGrid(selectedYear, selectedMonth);
+            renderBoxList(selectedYear, selectedMonth, selectedDay);
         }
 
         yearSelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); });
