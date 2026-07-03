@@ -1,4 +1,3 @@
-
 import os
 import requests
 import json
@@ -294,7 +293,7 @@ def generate_chronicle_hub():
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
         /* 羊皮纸日历架构 */
-        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; transition: border 0.3s ease; }
+        .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
@@ -365,7 +364,7 @@ def generate_chronicle_hub():
         const monthSelect = document.getElementById('monthSelect');
         const daysGrid = document.getElementById('daysGrid');
         const feedList = document.getElementById('feedList');
-        const calendarBox = document.getElementById('calendarBox');
+        const calendarBox = document.querySelector('.calendar-box');
 
         // ==== 统一 Click 双击检测 ====
         let lastTap = 0;
@@ -376,13 +375,10 @@ def generate_chronicle_hub():
             if (tapLength < 500 && tapLength > 0) {
                 window.deleteMode = !window.deleteMode;
                 
-                // 仅改变显示状态，不销毁 DOM
                 const btns = document.querySelectorAll('.delete-btn');
                 btns.forEach(btn => btn.style.display = window.deleteMode ? 'flex' : 'none');
                 
-                // 给日历框添加一点轻量级视觉反馈
                 calendarBox.style.border = window.deleteMode ? "1px solid #ff3b30" : "1px solid var(--parchment-border)";
-                
                 e.preventDefault();
             }
             lastTap = currentTime;
@@ -398,6 +394,7 @@ def generate_chronicle_hub():
             yearSelect.value = selectedYear; monthSelect.value = selectedMonth;
         }
 
+        // 核心修复1：仅在月份/年份切换时彻底重建 DOM
         function renderCalendarGrid(year, month) {
             daysGrid.innerHTML = '';
             const firstDay = new Date(year, month - 1, 1).getDay();
@@ -419,10 +416,15 @@ def generate_chronicle_hub():
                 if (year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate()) cell.classList.add('today');
                 if (year === selectedYear && month === selectedMonth && day === selectedDay) cell.classList.add('selected');
                 
-                // 点击日期单元格正常渲染下方列表
-                cell.addEventListener('click', () => {
+                // 核心修复2：点击单元格时，绝不销毁 DOM，只做单纯的 class 切换！确保事件冒泡通道畅通无阻！
+                cell.addEventListener('click', function() {
                     selectedYear = year; selectedMonth = month; selectedDay = day;
-                    renderCalendarGrid(year, month); renderBoxList(year, month, day);
+                    
+                    const cells = document.querySelectorAll('.day-cell');
+                    cells.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    renderBoxList(year, month, day);
                 });
                 daysGrid.appendChild(cell);
             }
@@ -444,10 +446,10 @@ def generate_chronicle_hub():
                     a.innerHTML = `<span class="feed-title">📌 单集精读: ${item.title.replace('🔮 ', '')}</span>`;
                     wrapper.appendChild(a);
 
-                    // 始终创建删除按钮，通过 window.deleteMode 维持生命周期内显隐状态一致性
                     const delBtn = document.createElement('button');
                     delBtn.className = 'delete-btn';
                     delBtn.innerHTML = '🗑️'; 
+                    // 创建时应用状态，并使用 flex 以支撑内部图文居中
                     if (window.deleteMode) delBtn.style.display = 'flex';
                     
                     delBtn.onclick = (e) => {
@@ -486,7 +488,6 @@ def generate_chronicle_hub():
                 const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
                 
                 if (getRes.status === 404) {
-                    // 若云端不存在，直接静默清理本地缓存
                     removeLocalData(year, month, day, index);
                     return;
                 }
@@ -509,7 +510,6 @@ def generate_chronicle_hub():
                 });
 
                 if (delRes.ok) {
-                    // 消除冗余成功通知，静默移除数据刷新 UI
                     removeLocalData(year, month, day, index);
                 } else {
                     alert("删除失败: " + await delRes.text());
