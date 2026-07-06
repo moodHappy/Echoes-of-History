@@ -48,4 +48,4 @@
 
 ---
 
-*Powered by [moodHappy / HAL]*
+*Powered by [moodHappy]*
