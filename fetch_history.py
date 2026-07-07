@@ -382,7 +382,6 @@ def generate_chronicle_hub():
         </div>
     </div>
 
-    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -496,7 +495,8 @@ def generate_chronicle_hub():
         function getAvailableMonths() {
             let list = [];
             const currentY = today.getFullYear();
-            for (let i = 0; i < 50; i++) {
+            // 包含未来 50 年和过去 50 年
+            for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
                     let months = Object.keys(archiveData[y]).map(Number).sort((a,b)=>a-b);
@@ -512,8 +512,8 @@ def generate_chronicle_hub():
             const currentY = today.getFullYear();
             let hasYear = false;
             
-            // 生成日历年应该 50 年的范围，且仅追加包含内容的年份（没有内容的不显示）
-            for (let i = 0; i < 50; i++) {
+            // 生成日历年包含未来50年和过去50年的范围，且仅追加包含内容的年份（没有内容的不显示）
+            for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
                     const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
@@ -521,7 +521,7 @@ def generate_chronicle_hub():
                     hasYear = true;
                 }
             }
-            // 若五十年内一条数据都没有，至少显示个今年防止崩溃
+            // 若范围内一条数据都没有，至少显示个今年防止崩溃
             if (!hasYear) {
                 const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
                 yearSelect.appendChild(opt);
