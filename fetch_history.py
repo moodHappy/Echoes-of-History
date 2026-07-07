@@ -1,4 +1,3 @@
-
 import os
 import requests
 import json
@@ -306,7 +305,7 @@ def generate_chronicle_hub():
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
         .day-cell.empty { visibility: hidden; }
         .day-cell.has-news { color: var(--ink-dark); }
-        .day-cell.no-news { color: #d0c8be; }
+        .day-cell.no-news { visibility: hidden; pointer-events: none; } /* 完全隐藏无内容的日期格子 */
         .day-cell.selected { background: #ffebeb; border: 1px solid var(--imperial); color: var(--imperial); }
         .day-cell.today { background: #f4ebd9; border: 1px solid var(--parchment-border); }
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
@@ -365,12 +364,7 @@ def generate_chronicle_hub():
                 <div class="cal-controls">
                     <button class="cal-btn" id="prevBtn">&lt;</button>
                     <select class="select-shell" id="yearSelect"></select>
-                    <select class="select-shell" id="monthSelect">
-                        <option value="1">01月</option><option value="2">02月</option><option value="3">03月</option>
-                        <option value="4">04月</option><option value="5">05月</option><option value="6">06月</option>
-                        <option value="7">07月</option><option value="8">08月</option><option value="9">09月</option>
-                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
-                    </select>
+                    <select class="select-shell" id="monthSelect"></select>
                     <button class="cal-btn" id="nextBtn">&gt;</button>
                     <button class="cal-btn" id="todayBtn">回到今天</button>
                 </div>
@@ -385,7 +379,6 @@ def generate_chronicle_hub():
         </div>
     </div>
 
-    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -424,7 +417,9 @@ def generate_chronicle_hub():
                     archiveData[y][m][d] = archiveData[y][m][d].filter(item => !deletedPaths.includes(item.path));
                     if (archiveData[y][m][d].length === 0) delete archiveData[y][m][d];
                 }
+                if (Object.keys(archiveData[y][m]).length === 0) delete archiveData[y][m];
             }
+            if (Object.keys(archiveData[y]).length === 0) delete archiveData[y];
         }
 
         const today = new Date();
@@ -493,14 +488,78 @@ def generate_chronicle_hub():
             }
         }
 
+        // 获取全局所有包含数据的年月（用于智能跳转）
+        function getAvailableMonths() {
+            let list = [];
+            const currentY = today.getFullYear();
+            for (let i = 0; i < 50; i++) {
+                let y = currentY - i;
+                if (archiveData[y]) {
+                    let months = Object.keys(archiveData[y]).map(Number).sort((a,b)=>a-b);
+                    months.forEach(m => list.push({y, m}));
+                }
+            }
+            if(list.length === 0) list.push({y: currentY, m: today.getMonth()+1});
+            return list;
+        }
+
         function initDropdowns() {
-            const years = Object.keys(archiveData).map(Number).sort((a, b) => b - a);
-            if (!years.includes(selectedYear)) years.unshift(selectedYear);
-            years.forEach(y => {
-                const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
+            yearSelect.innerHTML = '';
+            const currentY = today.getFullYear();
+            let hasYear = false;
+            
+            // 生成日历年应该 50 年的范围，且仅追加包含内容的年份（没有内容的不显示）
+            for (let i = 0; i < 50; i++) {
+                let y = currentY - i;
+                if (archiveData[y]) {
+                    const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
+                    yearSelect.appendChild(opt);
+                    hasYear = true;
+                }
+            }
+            // 若五十年内一条数据都没有，至少显示个今年防止崩溃
+            if (!hasYear) {
+                const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
                 yearSelect.appendChild(opt);
-            });
-            yearSelect.value = selectedYear; monthSelect.value = selectedMonth;
+            }
+            
+            // 确保所选年份有效，否则就近抓取最近有数据的一年
+            let availableYears = Array.from(yearSelect.options).map(o => parseInt(o.value));
+            if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0];
+            yearSelect.value = selectedYear;
+
+            updateMonthDropdown(selectedYear);
+        }
+
+        function updateMonthDropdown(year) {
+            monthSelect.innerHTML = '';
+            let hasMonth = false;
+            
+            // 只生成有数据的月份（没有内容的不显示）
+            if (archiveData[year]) {
+                let months = Object.keys(archiveData[year]).map(Number).sort((a,b)=>a-b);
+                months.forEach(m => {
+                    const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
+                    monthSelect.appendChild(opt);
+                    hasMonth = true;
+                });
+            }
+            // 兜底设计
+            if (!hasMonth) {
+                const opt = document.createElement('option'); opt.value = selectedMonth; opt.textContent = String(selectedMonth).padStart(2, '0') + '月';
+                monthSelect.appendChild(opt);
+            }
+            
+            // 确保所选月份有效，否则跳到当年的第一个可用月
+            let availableMonths = Array.from(monthSelect.options).map(o => parseInt(o.value));
+            if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0];
+            monthSelect.value = selectedMonth;
+            
+            // 如果某天没有内容，自动定位到当月第一个有内容的日子
+            if (archiveData[year] && archiveData[year][selectedMonth]) {
+                let days = Object.keys(archiveData[year][selectedMonth]).map(Number).sort((a,b)=>a-b);
+                if (!days.includes(selectedDay) && days.length > 0) selectedDay = days[0];
+            }
         }
 
         function renderCalendarGrid(year, month) {
@@ -520,6 +579,7 @@ def generate_chronicle_hub():
                 const cell = document.createElement('div'); cell.className = 'day-cell'; cell.textContent = day;
                 const dot = document.createElement('div'); dot.className = 'dot'; cell.appendChild(dot);
                 
+                // 完全隐身/显形逻辑
                 if (monthData[day] && monthData[day].length > 0) cell.classList.add('has-news'); else cell.classList.add('no-news');
                 if (year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate()) cell.classList.add('today');
                 if (year === selectedYear && month === selectedMonth && day === selectedDay) cell.classList.add('selected');
@@ -578,32 +638,21 @@ def generate_chronicle_hub():
                 if (!getRes.ok) return;
                 const fileData = await getRes.json();
                 
-                // Base64 解码 (兼顾中文字符)
                 let content = decodeURIComponent(Array.prototype.map.call(atob(fileData.content), function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join(''));
                 
-                // 正则替换锁定区间的 JSON 数据
                 const newJson = JSON.stringify(archiveData);
                 content = content.replace(/\/\/ ===DATA_START===[\s\S]*?\/\/ ===DATA_END===/, `// ===DATA_START===\n        let archiveData = ${newJson};\n        // ===DATA_END===`);
                 
-                // 重新 Base64 编码
                 const newContentBase64 = btoa(encodeURIComponent(content).replace(/%([0-9A-F]{2})/g, function(match, p1) {
                     return String.fromCharCode('0x' + p1);
                 }));
 
-                // 提交更新后的 index.html
                 await fetch(url, {
                     method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: `Auto-update index.html map after deletion`,
-                        content: newContentBase64,
-                        sha: fileData.sha
-                    })
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `Auto-update index.html map after deletion`, content: newContentBase64, sha: fileData.sha })
                 });
             } catch (e) {
                 console.error("同步 index.html 失败:", e);
@@ -632,7 +681,6 @@ def generate_chronicle_hub():
                 const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
                 
                 if (getRes.status === 404) {
-                    // 若云端已被其他方式删除，直接清理本地状态
                     markAsDeletedLocally(filePath, year, month, day, index);
                     return;
                 }
@@ -642,20 +690,12 @@ def generate_chronicle_hub():
 
                 const delRes = await fetch(url, {
                     method: 'DELETE',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: `Delete ${filePath} via Web UI`,
-                        sha: fileData.sha
-                    })
+                    headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `Delete ${filePath} via Web UI`, sha: fileData.sha })
                 });
 
                 if (delRes.ok) {
-                    // 记录到黑名单防缓存，立即在UI中剔除
                     markAsDeletedLocally(filePath, year, month, day, index);
-                    // 悄悄同步更新远端的 index.html (无冗余弹窗)
                     syncIndexHtmlToGithub(token, user, repoName);
                 } else {
                     alert("删除失败: " + await delRes.text());
@@ -666,27 +706,90 @@ def generate_chronicle_hub():
         }
 
         function markAsDeletedLocally(filePath, year, month, day, index) {
-            // 加入本地黑名单并持久化
             if (!deletedPaths.includes(filePath)) {
                 deletedPaths.push(filePath);
                 localStorage.setItem('deleted_paths', JSON.stringify(deletedPaths));
             }
-            // 从内存移除并重绘
             archiveData[year][month][day].splice(index, 1);
-            if (archiveData[year][month][day].length === 0) {
-                delete archiveData[year][month][day];
-            }
+            if (archiveData[year][month][day].length === 0) delete archiveData[year][month][day];
+            if (Object.keys(archiveData[year][month] || {}).length === 0) delete archiveData[year][month];
+            if (Object.keys(archiveData[year] || {}).length === 0) delete archiveData[year];
+            
+            // 重构下拉框确保"没有内容的不显示"
+            initDropdowns(); 
             renderCalendarGrid(selectedYear, selectedMonth);
             renderBoxList(selectedYear, selectedMonth, selectedDay);
         }
 
-        yearSelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
-        monthSelect.addEventListener('change', (e) => { selectedMonth = parseInt(e.target.value); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
-        document.getElementById('prevBtn').addEventListener('click', () => { selectedMonth--; if (selectedMonth < 1) { selectedMonth = 12; selectedYear--; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay);});
-        document.getElementById('nextBtn').addEventListener('click', () => { selectedMonth++; if (selectedMonth > 12) { selectedMonth = 1; selectedYear++; yearSelect.value = selectedYear; } monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
-        document.getElementById('todayBtn').addEventListener('click', () => { selectedYear = today.getFullYear(); selectedMonth = today.getMonth() + 1; selectedDay = today.getDate(); yearSelect.value = selectedYear; monthSelect.value = selectedMonth; renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay); });
+        yearSelect.addEventListener('change', (e) => { 
+            selectedYear = parseInt(e.target.value); 
+            updateMonthDropdown(selectedYear);
+            renderCalendarGrid(selectedYear, selectedMonth); 
+            renderBoxList(selectedYear, selectedMonth, selectedDay); 
+        });
+        
+        monthSelect.addEventListener('change', (e) => { 
+            selectedMonth = parseInt(e.target.value); 
+            if (archiveData[selectedYear] && archiveData[selectedYear][selectedMonth]) {
+                let days = Object.keys(archiveData[selectedYear][selectedMonth]).map(Number).sort((a,b)=>a-b);
+                if (!days.includes(selectedDay) && days.length > 0) selectedDay = days[0];
+            }
+            renderCalendarGrid(selectedYear, selectedMonth); 
+            renderBoxList(selectedYear, selectedMonth, selectedDay); 
+        });
+        
+        document.getElementById('prevBtn').addEventListener('click', () => { 
+            let list = getAvailableMonths();
+            list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
+            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
+            if (idx > 0) {
+                selectedYear = list[idx-1].y;
+                selectedMonth = list[idx-1].m;
+                yearSelect.value = selectedYear;
+                updateMonthDropdown(selectedYear);
+                renderCalendarGrid(selectedYear, selectedMonth); 
+                renderBoxList(selectedYear, selectedMonth, selectedDay);
+            }
+        });
+        
+        document.getElementById('nextBtn').addEventListener('click', () => { 
+            let list = getAvailableMonths();
+            list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
+            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
+            if (idx !== -1 && idx < list.length - 1) {
+                selectedYear = list[idx+1].y;
+                selectedMonth = list[idx+1].m;
+                yearSelect.value = selectedYear;
+                updateMonthDropdown(selectedYear);
+                renderCalendarGrid(selectedYear, selectedMonth); 
+                renderBoxList(selectedYear, selectedMonth, selectedDay);
+            }
+        });
+        
+        document.getElementById('todayBtn').addEventListener('click', () => { 
+            selectedYear = today.getFullYear(); 
+            selectedMonth = today.getMonth() + 1; 
+            selectedDay = today.getDate(); 
+            
+            let yOpts = Array.from(yearSelect.options).map(o => parseInt(o.value));
+            if (!yOpts.includes(selectedYear)) {
+                const opt = document.createElement('option'); opt.value = selectedYear; opt.textContent = selectedYear + ' 年';
+                yearSelect.appendChild(opt);
+            }
+            yearSelect.value = selectedYear;
+            
+            monthSelect.innerHTML = '';
+            const mOpt = document.createElement('option'); mOpt.value = selectedMonth; mOpt.textContent = String(selectedMonth).padStart(2, '0') + '月';
+            monthSelect.appendChild(mOpt);
+            monthSelect.value = selectedMonth;
+            
+            renderCalendarGrid(selectedYear, selectedMonth); 
+            renderBoxList(selectedYear, selectedMonth, selectedDay); 
+        });
 
-        initDropdowns(); renderCalendarGrid(selectedYear, selectedMonth); renderBoxList(selectedYear, selectedMonth, selectedDay);
+        initDropdowns(); 
+        renderCalendarGrid(selectedYear, selectedMonth); 
+        renderBoxList(selectedYear, selectedMonth, selectedDay);
     </script>
 </body>
 </html>"""
