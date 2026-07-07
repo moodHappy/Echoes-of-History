@@ -125,6 +125,7 @@
         </div>
     </div>
 
+    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -152,7 +153,7 @@
 
     <script>
         // ===DATA_START===
-        let archiveData = {"2026":{"6":{"26":[{"time":"23:58","path":"2026/6/2026_6_26_2358.html","title":"🔮 历史灵感盲盒已送达"}],"30":[{"time":"01:31","path":"2026/6/2026_6_30_0131.html","title":"🔮 历史灵感盲盒已送达"}]},"7":{"2":[{"time":"10:45","path":"2026/7/2026_7_2_1045.html","title":"🔮 历史灵感盲盒已送达"}],"3":[{"time":"19:03","path":"2026/7/2026_7_3_1903.html","title":"🔮 历史灵感盲盒已送达"}],"4":[{"time":"00:21","path":"2026/7/2026_7_4_0021.html","title":"🔮 历史灵感盲盒已送达"}],"6":[{"time":"00:02","path":"2026/7/2026_7_6_0002.html","title":"🔮 历史灵感盲盒已送达"}],"7":[{"time":"23:36","path":"2026/7/2026_7_7_2336.html","title":"🔮 历史灵感盲盒已送达"}]}}};
+        let archiveData = {"2026": {"7": {"7": [{"time": "23:50", "path": "2026/7/2026_7_7_2350.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "01:38", "path": "2026/7/2026_7_7_0138.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "6": [{"time": "00:02", "path": "2026/7/2026_7_6_0002.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "4": [{"time": "00:21", "path": "2026/7/2026_7_4_0021.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "3": [{"time": "19:03", "path": "2026/7/2026_7_3_1903.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
         // ===DATA_END===
         
         // === 本地防缓存黑名单过滤拦截 ===
@@ -238,8 +239,7 @@
         function getAvailableMonths() {
             let list = [];
             const currentY = today.getFullYear();
-            // 扩展扫描范围：从过去50年到未来50年
-            for (let i = -50; i <= 50; i++) {
+            for (let i = 0; i < 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
                     let months = Object.keys(archiveData[y]).map(Number).sort((a,b)=>a-b);
@@ -253,16 +253,26 @@
         function initDropdowns() {
             yearSelect.innerHTML = '';
             const currentY = today.getFullYear();
+            let hasYear = false;
             
-            // 生成未来50年到过去50年的范围（无条件显示，解锁完整的日历体验）
-            for (let i = -50; i <= 50; i++) {
+            // 生成日历年应该 50 年的范围，且仅追加包含内容的年份（没有内容的不显示）
+            for (let i = 0; i < 50; i++) {
                 let y = currentY - i;
-                const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
+                if (archiveData[y]) {
+                    const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
+                    yearSelect.appendChild(opt);
+                    hasYear = true;
+                }
+            }
+            // 若五十年内一条数据都没有，至少显示个今年防止崩溃
+            if (!hasYear) {
+                const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
                 yearSelect.appendChild(opt);
             }
             
+            // 确保所选年份有效，否则就近抓取最近有数据的一年
             let availableYears = Array.from(yearSelect.options).map(o => parseInt(o.value));
-            if (!availableYears.includes(selectedYear)) selectedYear = currentY;
+            if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0];
             yearSelect.value = selectedYear;
 
             updateMonthDropdown(selectedYear);
@@ -270,13 +280,24 @@
 
         function updateMonthDropdown(year) {
             monthSelect.innerHTML = '';
+            let hasMonth = false;
             
-            // 始终生成12个月份
-            for (let m = 1; m <= 12; m++) {
-                const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
+            // 只生成有数据的月份（没有内容的不显示）
+            if (archiveData[year]) {
+                let months = Object.keys(archiveData[year]).map(Number).sort((a,b)=>a-b);
+                months.forEach(m => {
+                    const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
+                    monthSelect.appendChild(opt);
+                    hasMonth = true;
+                });
+            }
+            // 兜底设计
+            if (!hasMonth) {
+                const opt = document.createElement('option'); opt.value = selectedMonth; opt.textContent = String(selectedMonth).padStart(2, '0') + '月';
                 monthSelect.appendChild(opt);
             }
             
+            // 确保所选月份有效，否则跳到当年的第一个可用月
             let availableMonths = Array.from(monthSelect.options).map(o => parseInt(o.value));
             if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0];
             monthSelect.value = selectedMonth;
@@ -443,6 +464,7 @@
             if (Object.keys(archiveData[year][month] || {}).length === 0) delete archiveData[year][month];
             if (Object.keys(archiveData[year] || {}).length === 0) delete archiveData[year];
             
+            // 重构下拉框确保"没有内容的不显示"
             initDropdowns(); 
             renderCalendarGrid(selectedYear, selectedMonth);
             renderBoxList(selectedYear, selectedMonth, selectedDay);
@@ -468,21 +490,10 @@
         document.getElementById('prevBtn').addEventListener('click', () => { 
             let list = getAvailableMonths();
             list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            
-            let currentVal = selectedYear * 12 + selectedMonth;
-            let target = null;
-            
-            // 智能跳跃：向前寻找最近一个有数据的月份
-            for (let i = list.length - 1; i >= 0; i--) {
-                if (list[i].y * 12 + list[i].m < currentVal) {
-                    target = list[i];
-                    break;
-                }
-            }
-            
-            if (target) {
-                selectedYear = target.y;
-                selectedMonth = target.m;
+            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
+            if (idx > 0) {
+                selectedYear = list[idx-1].y;
+                selectedMonth = list[idx-1].m;
                 yearSelect.value = selectedYear;
                 updateMonthDropdown(selectedYear);
                 renderCalendarGrid(selectedYear, selectedMonth); 
@@ -493,21 +504,10 @@
         document.getElementById('nextBtn').addEventListener('click', () => { 
             let list = getAvailableMonths();
             list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            
-            let currentVal = selectedYear * 12 + selectedMonth;
-            let target = null;
-            
-            // 智能跳跃：向后寻找最近一个有数据的月份
-            for (let i = 0; i < list.length; i++) {
-                if (list[i].y * 12 + list[i].m > currentVal) {
-                    target = list[i];
-                    break;
-                }
-            }
-            
-            if (target) {
-                selectedYear = target.y;
-                selectedMonth = target.m;
+            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
+            if (idx !== -1 && idx < list.length - 1) {
+                selectedYear = list[idx+1].y;
+                selectedMonth = list[idx+1].m;
                 yearSelect.value = selectedYear;
                 updateMonthDropdown(selectedYear);
                 renderCalendarGrid(selectedYear, selectedMonth); 
@@ -520,7 +520,16 @@
             selectedMonth = today.getMonth() + 1; 
             selectedDay = today.getDate(); 
             
+            let yOpts = Array.from(yearSelect.options).map(o => parseInt(o.value));
+            if (!yOpts.includes(selectedYear)) {
+                const opt = document.createElement('option'); opt.value = selectedYear; opt.textContent = selectedYear + ' 年';
+                yearSelect.appendChild(opt);
+            }
             yearSelect.value = selectedYear;
+            
+            monthSelect.innerHTML = '';
+            const mOpt = document.createElement('option'); mOpt.value = selectedMonth; mOpt.textContent = String(selectedMonth).padStart(2, '0') + '月';
+            monthSelect.appendChild(mOpt);
             monthSelect.value = selectedMonth;
             
             renderCalendarGrid(selectedYear, selectedMonth); 
