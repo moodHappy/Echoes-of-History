@@ -382,7 +382,6 @@ def generate_chronicle_hub():
         </div>
     </div>
 
-    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -492,44 +491,21 @@ def generate_chronicle_hub():
             }
         }
 
-        // 获取全局所有包含数据的年月（用于智能跳转）
-        function getAvailableMonths() {
-            let list = [];
-            const currentY = today.getFullYear();
-            for (let i = 0; i < 50; i++) {
-                let y = currentY - i;
-                if (archiveData[y]) {
-                    let months = Object.keys(archiveData[y]).map(Number).sort((a,b)=>a-b);
-                    months.forEach(m => list.push({y, m}));
-                }
-            }
-            if(list.length === 0) list.push({y: currentY, m: today.getMonth()+1});
-            return list;
-        }
-
+        // ================= 重构日历渲染逻辑 =================
         function initDropdowns() {
             yearSelect.innerHTML = '';
             const currentY = today.getFullYear();
-            let hasYear = false;
             
-            // 生成日历年应该 50 年的范围，且仅追加包含内容的年份（没有内容的不显示）
-            for (let i = 0; i < 50; i++) {
-                let y = currentY - i;
-                if (archiveData[y]) {
-                    const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
-                    yearSelect.appendChild(opt);
-                    hasYear = true;
-                }
-            }
-            // 若五十年内一条数据都没有，至少显示个今年防止崩溃
-            if (!hasYear) {
-                const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
+            // 完整生成当前年份到未来50年的日历范围，去掉了过去50年
+            for (let y = currentY; y <= currentY + 50; y++) {
+                const opt = document.createElement('option'); 
+                opt.value = y; 
+                opt.textContent = y + ' 年';
                 yearSelect.appendChild(opt);
             }
             
-            // 确保所选年份有效，否则就近抓取最近有数据的一年
             let availableYears = Array.from(yearSelect.options).map(o => parseInt(o.value));
-            if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0];
+            if (!availableYears.includes(selectedYear)) selectedYear = currentY;
             yearSelect.value = selectedYear;
 
             updateMonthDropdown(selectedYear);
@@ -537,33 +513,18 @@ def generate_chronicle_hub():
 
         function updateMonthDropdown(year) {
             monthSelect.innerHTML = '';
-            let hasMonth = false;
-            
-            // 只生成有数据的月份（没有内容的不显示）
-            if (archiveData[year]) {
-                let months = Object.keys(archiveData[year]).map(Number).sort((a,b)=>a-b);
-                months.forEach(m => {
-                    const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
-                    monthSelect.appendChild(opt);
-                    hasMonth = true;
-                });
-            }
-            // 兜底设计
-            if (!hasMonth) {
-                const opt = document.createElement('option'); opt.value = selectedMonth; opt.textContent = String(selectedMonth).padStart(2, '0') + '月';
+            // 完整渲染 1 - 12 月
+            for (let m = 1; m <= 12; m++) {
+                const opt = document.createElement('option'); 
+                opt.value = m; 
+                opt.textContent = String(m).padStart(2, '0') + '月';
                 monthSelect.appendChild(opt);
             }
-            
-            // 确保所选月份有效，否则跳到当年的第一个可用月
-            let availableMonths = Array.from(monthSelect.options).map(o => parseInt(o.value));
-            if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0];
             monthSelect.value = selectedMonth;
             
-            // 如果某天没有内容，自动定位到当月第一个有内容的日子
-            if (archiveData[year] && archiveData[year][selectedMonth]) {
-                let days = Object.keys(archiveData[year][selectedMonth]).map(Number).sort((a,b)=>a-b);
-                if (!days.includes(selectedDay) && days.length > 0) selectedDay = days[0];
-            }
+            // 边界检查：防止溢出（例如 1 月 31 日切到 2 月时，退回 2 月最后一天）
+            const daysInMonth = new Date(year, selectedMonth, 0).getDate();
+            if (selectedDay > daysInMonth) selectedDay = daysInMonth;
         }
 
         function renderCalendarGrid(year, month) {
@@ -719,7 +680,6 @@ def generate_chronicle_hub():
             if (Object.keys(archiveData[year][month] || {}).length === 0) delete archiveData[year][month];
             if (Object.keys(archiveData[year] || {}).length === 0) delete archiveData[year];
             
-            // 重构下拉框确保"没有内容的不显示"
             initDropdowns(); 
             renderCalendarGrid(selectedYear, selectedMonth);
             renderBoxList(selectedYear, selectedMonth, selectedDay);
@@ -734,40 +694,48 @@ def generate_chronicle_hub():
         
         monthSelect.addEventListener('change', (e) => { 
             selectedMonth = parseInt(e.target.value); 
-            if (archiveData[selectedYear] && archiveData[selectedYear][selectedMonth]) {
-                let days = Object.keys(archiveData[selectedYear][selectedMonth]).map(Number).sort((a,b)=>a-b);
-                if (!days.includes(selectedDay) && days.length > 0) selectedDay = days[0];
-            }
+            const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+            if (selectedDay > daysInMonth) selectedDay = daysInMonth;
             renderCalendarGrid(selectedYear, selectedMonth); 
             renderBoxList(selectedYear, selectedMonth, selectedDay); 
         });
         
+        // 恢复为标准的前后翻月控制，不挑年份/月份跳变
         document.getElementById('prevBtn').addEventListener('click', () => { 
-            let list = getAvailableMonths();
-            list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
-            if (idx > 0) {
-                selectedYear = list[idx-1].y;
-                selectedMonth = list[idx-1].m;
+            selectedMonth--;
+            if (selectedMonth < 1) {
+                selectedMonth = 12;
+                selectedYear--;
+                // 确保不会翻出设定的年份下限
+                if (selectedYear < today.getFullYear()) {
+                    selectedYear = today.getFullYear();
+                    selectedMonth = 1;
+                }
                 yearSelect.value = selectedYear;
-                updateMonthDropdown(selectedYear);
-                renderCalendarGrid(selectedYear, selectedMonth); 
-                renderBoxList(selectedYear, selectedMonth, selectedDay);
             }
+            monthSelect.value = selectedMonth;
+            
+            const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+            if (selectedDay > daysInMonth) selectedDay = daysInMonth;
+            
+            renderCalendarGrid(selectedYear, selectedMonth); 
+            renderBoxList(selectedYear, selectedMonth, selectedDay);
         });
         
         document.getElementById('nextBtn').addEventListener('click', () => { 
-            let list = getAvailableMonths();
-            list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
-            if (idx !== -1 && idx < list.length - 1) {
-                selectedYear = list[idx+1].y;
-                selectedMonth = list[idx+1].m;
+            selectedMonth++;
+            if (selectedMonth > 12) {
+                selectedMonth = 1;
+                selectedYear++;
                 yearSelect.value = selectedYear;
-                updateMonthDropdown(selectedYear);
-                renderCalendarGrid(selectedYear, selectedMonth); 
-                renderBoxList(selectedYear, selectedMonth, selectedDay);
             }
+            monthSelect.value = selectedMonth;
+            
+            const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+            if (selectedDay > daysInMonth) selectedDay = daysInMonth;
+            
+            renderCalendarGrid(selectedYear, selectedMonth); 
+            renderBoxList(selectedYear, selectedMonth, selectedDay);
         });
         
         document.getElementById('todayBtn').addEventListener('click', () => { 
@@ -775,16 +743,7 @@ def generate_chronicle_hub():
             selectedMonth = today.getMonth() + 1; 
             selectedDay = today.getDate(); 
             
-            let yOpts = Array.from(yearSelect.options).map(o => parseInt(o.value));
-            if (!yOpts.includes(selectedYear)) {
-                const opt = document.createElement('option'); opt.value = selectedYear; opt.textContent = selectedYear + ' 年';
-                yearSelect.appendChild(opt);
-            }
             yearSelect.value = selectedYear;
-            
-            monthSelect.innerHTML = '';
-            const mOpt = document.createElement('option'); mOpt.value = selectedMonth; mOpt.textContent = String(selectedMonth).padStart(2, '0') + '月';
-            monthSelect.appendChild(mOpt);
             monthSelect.value = selectedMonth;
             
             renderCalendarGrid(selectedYear, selectedMonth); 
@@ -816,3 +775,4 @@ if __name__ == "__main__":
 
     # 全自动刷新日历主视图索引
     generate_chronicle_hub()
+
