@@ -304,8 +304,11 @@ def generate_chronicle_hub():
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
         .day-cell.empty { visibility: hidden; }
+        
+        /* 核心修复：恢复日历网格完整性，没内容的仅置灰 */
         .day-cell.has-news { color: var(--ink-dark); }
-        .day-cell.no-news { visibility: hidden; pointer-events: none; } /* 完全隐藏无内容的日期格子 */
+        .day-cell.no-news { color: #d0c8be; }
+        
         .day-cell.selected { background: #ffebeb; border: 1px solid var(--imperial); color: var(--imperial); }
         .day-cell.today { background: #f4ebd9; border: 1px solid var(--parchment-border); }
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
@@ -379,6 +382,7 @@ def generate_chronicle_hub():
         </div>
     </div>
 
+    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -579,7 +583,7 @@ def generate_chronicle_hub():
                 const cell = document.createElement('div'); cell.className = 'day-cell'; cell.textContent = day;
                 const dot = document.createElement('div'); dot.className = 'dot'; cell.appendChild(dot);
                 
-                // 完全隐身/显形逻辑
+                // 恢复正常视觉展示
                 if (monthData[day] && monthData[day].length > 0) cell.classList.add('has-news'); else cell.classList.add('no-news');
                 if (year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate()) cell.classList.add('today');
                 if (year === selectedYear && month === selectedMonth && day === selectedDay) cell.classList.add('selected');
