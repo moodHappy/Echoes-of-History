@@ -495,7 +495,7 @@ def generate_chronicle_hub():
         function getAvailableMonths() {
             let list = [];
             const currentY = today.getFullYear();
-            // 包含未来 50 年和过去 50 年
+            // 扩展扫描范围：从过去50年到未来50年
             for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
@@ -510,26 +510,16 @@ def generate_chronicle_hub():
         function initDropdowns() {
             yearSelect.innerHTML = '';
             const currentY = today.getFullYear();
-            let hasYear = false;
             
-            // 生成日历年包含未来50年和过去50年的范围，且仅追加包含内容的年份（没有内容的不显示）
+            // 生成未来50年到过去50年的范围（无条件显示，解锁完整的日历体验）
             for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
-                if (archiveData[y]) {
-                    const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
-                    yearSelect.appendChild(opt);
-                    hasYear = true;
-                }
-            }
-            // 若范围内一条数据都没有，至少显示个今年防止崩溃
-            if (!hasYear) {
-                const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
+                const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
                 yearSelect.appendChild(opt);
             }
             
-            // 确保所选年份有效，否则就近抓取最近有数据的一年
             let availableYears = Array.from(yearSelect.options).map(o => parseInt(o.value));
-            if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0];
+            if (!availableYears.includes(selectedYear)) selectedYear = currentY;
             yearSelect.value = selectedYear;
 
             updateMonthDropdown(selectedYear);
@@ -537,24 +527,13 @@ def generate_chronicle_hub():
 
         function updateMonthDropdown(year) {
             monthSelect.innerHTML = '';
-            let hasMonth = false;
             
-            // 只生成有数据的月份（没有内容的不显示）
-            if (archiveData[year]) {
-                let months = Object.keys(archiveData[year]).map(Number).sort((a,b)=>a-b);
-                months.forEach(m => {
-                    const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
-                    monthSelect.appendChild(opt);
-                    hasMonth = true;
-                });
-            }
-            // 兜底设计
-            if (!hasMonth) {
-                const opt = document.createElement('option'); opt.value = selectedMonth; opt.textContent = String(selectedMonth).padStart(2, '0') + '月';
+            // 始终生成12个月份
+            for (let m = 1; m <= 12; m++) {
+                const opt = document.createElement('option'); opt.value = m; opt.textContent = String(m).padStart(2, '0') + '月';
                 monthSelect.appendChild(opt);
             }
             
-            // 确保所选月份有效，否则跳到当年的第一个可用月
             let availableMonths = Array.from(monthSelect.options).map(o => parseInt(o.value));
             if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0];
             monthSelect.value = selectedMonth;
@@ -719,7 +698,6 @@ def generate_chronicle_hub():
             if (Object.keys(archiveData[year][month] || {}).length === 0) delete archiveData[year][month];
             if (Object.keys(archiveData[year] || {}).length === 0) delete archiveData[year];
             
-            // 重构下拉框确保"没有内容的不显示"
             initDropdowns(); 
             renderCalendarGrid(selectedYear, selectedMonth);
             renderBoxList(selectedYear, selectedMonth, selectedDay);
@@ -745,10 +723,21 @@ def generate_chronicle_hub():
         document.getElementById('prevBtn').addEventListener('click', () => { 
             let list = getAvailableMonths();
             list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
-            if (idx > 0) {
-                selectedYear = list[idx-1].y;
-                selectedMonth = list[idx-1].m;
+            
+            let currentVal = selectedYear * 12 + selectedMonth;
+            let target = null;
+            
+            // 智能跳跃：向前寻找最近一个有数据的月份
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i].y * 12 + list[i].m < currentVal) {
+                    target = list[i];
+                    break;
+                }
+            }
+            
+            if (target) {
+                selectedYear = target.y;
+                selectedMonth = target.m;
                 yearSelect.value = selectedYear;
                 updateMonthDropdown(selectedYear);
                 renderCalendarGrid(selectedYear, selectedMonth); 
@@ -759,10 +748,21 @@ def generate_chronicle_hub():
         document.getElementById('nextBtn').addEventListener('click', () => { 
             let list = getAvailableMonths();
             list.sort((a,b) => (a.y === b.y) ? a.m - b.m : a.y - b.y);
-            let idx = list.findIndex(item => item.y === selectedYear && item.m === selectedMonth);
-            if (idx !== -1 && idx < list.length - 1) {
-                selectedYear = list[idx+1].y;
-                selectedMonth = list[idx+1].m;
+            
+            let currentVal = selectedYear * 12 + selectedMonth;
+            let target = null;
+            
+            // 智能跳跃：向后寻找最近一个有数据的月份
+            for (let i = 0; i < list.length; i++) {
+                if (list[i].y * 12 + list[i].m > currentVal) {
+                    target = list[i];
+                    break;
+                }
+            }
+            
+            if (target) {
+                selectedYear = target.y;
+                selectedMonth = target.m;
                 yearSelect.value = selectedYear;
                 updateMonthDropdown(selectedYear);
                 renderCalendarGrid(selectedYear, selectedMonth); 
@@ -775,16 +775,7 @@ def generate_chronicle_hub():
             selectedMonth = today.getMonth() + 1; 
             selectedDay = today.getDate(); 
             
-            let yOpts = Array.from(yearSelect.options).map(o => parseInt(o.value));
-            if (!yOpts.includes(selectedYear)) {
-                const opt = document.createElement('option'); opt.value = selectedYear; opt.textContent = selectedYear + ' 年';
-                yearSelect.appendChild(opt);
-            }
             yearSelect.value = selectedYear;
-            
-            monthSelect.innerHTML = '';
-            const mOpt = document.createElement('option'); mOpt.value = selectedMonth; mOpt.textContent = String(selectedMonth).padStart(2, '0') + '月';
-            monthSelect.appendChild(mOpt);
             monthSelect.value = selectedMonth;
             
             renderCalendarGrid(selectedYear, selectedMonth); 
