@@ -125,7 +125,6 @@
         </div>
     </div>
 
-    <!-- 本地配置中心 Modals -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
@@ -153,7 +152,7 @@
 
     <script>
         // ===DATA_START===
-        let archiveData = {"2026":{"6":{"26":[{"time":"23:58","path":"2026/6/2026_6_26_2358.html","title":"🔮 历史灵感盲盒已送达"}],"30":[{"time":"01:31","path":"2026/6/2026_6_30_0131.html","title":"🔮 历史灵感盲盒已送达"}]},"7":{"2":[{"time":"10:45","path":"2026/7/2026_7_2_1045.html","title":"🔮 历史灵感盲盒已送达"}],"3":[{"time":"19:03","path":"2026/7/2026_7_3_1903.html","title":"🔮 历史灵感盲盒已送达"}],"4":[{"time":"00:21","path":"2026/7/2026_7_4_0021.html","title":"🔮 历史灵感盲盒已送达"}],"6":[{"time":"00:02","path":"2026/7/2026_7_6_0002.html","title":"🔮 历史灵感盲盒已送达"}],"7":[{"time":"01:38","path":"2026/7/2026_7_7_0138.html","title":"🔮 历史灵感盲盒已送达"}]}}};
+        let archiveData = {"2026": {"7": {"7": [{"time": "23:36", "path": "2026/7/2026_7_7_2336.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "01:38", "path": "2026/7/2026_7_7_0138.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "6": [{"time": "00:02", "path": "2026/7/2026_7_6_0002.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "4": [{"time": "00:21", "path": "2026/7/2026_7_4_0021.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "3": [{"time": "19:03", "path": "2026/7/2026_7_3_1903.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
         // ===DATA_END===
         
         // === 本地防缓存黑名单过滤拦截 ===
@@ -239,7 +238,8 @@
         function getAvailableMonths() {
             let list = [];
             const currentY = today.getFullYear();
-            for (let i = 0; i < 50; i++) {
+            // 包含未来 50 年和过去 50 年
+            for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
                     let months = Object.keys(archiveData[y]).map(Number).sort((a,b)=>a-b);
@@ -255,8 +255,8 @@
             const currentY = today.getFullYear();
             let hasYear = false;
             
-            // 生成日历年应该 50 年的范围，且仅追加包含内容的年份（没有内容的不显示）
-            for (let i = 0; i < 50; i++) {
+            // 生成日历年包含未来50年和过去50年的范围，且仅追加包含内容的年份（没有内容的不显示）
+            for (let i = -50; i <= 50; i++) {
                 let y = currentY - i;
                 if (archiveData[y]) {
                     const opt = document.createElement('option'); opt.value = y; opt.textContent = y + ' 年';
@@ -264,7 +264,7 @@
                     hasYear = true;
                 }
             }
-            // 若五十年内一条数据都没有，至少显示个今年防止崩溃
+            // 若范围内一条数据都没有，至少显示个今年防止崩溃
             if (!hasYear) {
                 const opt = document.createElement('option'); opt.value = currentY; opt.textContent = currentY + ' 年';
                 yearSelect.appendChild(opt);
