@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Echoes of History - Blind Box</title>
+    <style>
+        :root { 
+            --parchment-bg: #fcf8f2; 
+            --parchment-border: #e8dfd1; 
+            --ink-dark: #2c2421; 
+            --ink-muted: #70625a; 
+            --imperial-blue: #1a365d; 
+            --accent-crimson: #8c1d40; 
+        }
+        body { 
+            background: var(--parchment-bg); 
+            color: var(--ink-dark); 
+            font-family: "Georgia", Garamond, serif; 
+            margin: 0; padding: 0; 
+            -webkit-font-smoothing: antialiased; 
+            line-height: 1.6;
+        }
+        .nav-header {
+            background: rgba(252, 248, 242, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--parchment-border);
+            padding: 15px 20px;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-header a {
+            color: var(--imperial-blue);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95rem;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 15px 60px 15px; }
+        
+        .box-title { text-align: center; margin-bottom: 40px; border-bottom: 2px double var(--parchment-border); padding-bottom: 20px; }
+        .box-title h1 { font-size: 2.2rem; font-weight: normal; margin: 0 0 10px 0; color: var(--accent-crimson); font-style: italic; }
+        .box-title p { margin: 0; color: var(--ink-muted); font-size: 0.95rem; letter-spacing: 1px; text-transform: uppercase; }
+        
+        .archive-card {
+            background: #ffffff;
+            border: 1px solid var(--parchment-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(44,36,33,0.03);
+            position: relative;
+        }
+        .card-epoch {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--accent-crimson);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .card-text {
+            font-size: 1.15rem;
+            color: var(--ink-dark);
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .wiki-refs {
+            font-size: 0.85rem;
+            color: var(--ink-muted);
+            border-top: 1px dashed var(--parchment-border);
+            padding-top: 12px;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+        }
+        .wiki-refs::-webkit-scrollbar { display: none; }
+        .wiki-refs a { color: var(--imperial-blue); text-decoration: none; font-weight: 500; margin: 0 2px; }
+        .wiki-refs a:hover { text-decoration: underline; }
+        
+        .inspiration-box {
+            background: #fdfbf7;
+            border-left: 3px solid var(--imperial-blue);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+        }
+        .prompt-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--imperial-blue);
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .prompt-body { font-size: 0.95rem; color: var(--ink-dark); font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="nav-header">
+        <a href="../../index.html">📜 Return to Chronicle</a>
+        <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">2026-07-17</span>
+    </div>
+    <div class="container">
+        <div class="box-title">
+            <h1>Echoes of History</h1>
+            <p>~ 今日份虚空历史盲盒 ~</p>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1944</div>
+            <div class="card-text">Laden with munitions for World War II, two ships exploded at the Port Chicago Naval Magazine in California, killing 320 people and injuring more than 400 others.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Port_Chicago_disaster" target="_blank">Port Chicago disaster</a> | <a href="https://en.wikipedia.org/wiki/Port_Chicago_Naval_Magazine_National_Memorial" target="_blank">Port Chicago Naval Magazine National Memorial</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🔮 历史暗流：假设这场事件背后其实有一个隐秘的组织在操纵，他们的终极目的是什么？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1918</div>
+            <div class="card-text">RMS Carpathia, which had rescued survivors of the 1912 Titanic sinking, was sunk by a German U-boat with the loss of five crew.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/RMS_Carpathia" target="_blank">RMS Carpathia</a> | <a href="https://en.wikipedia.org/wiki/Sinking_of_the_Titanic" target="_blank">Sinking of the Titanic</a> | <a href="https://en.wikipedia.org/wiki/U-boat" target="_blank">U-boat</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">📜 编年史裂痕：如果某个关键人物在事件发生的五分钟前改变了主意，后世的版图会发生什么巨变？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1453</div>
+            <div class="card-text">The Battle of Castillon, the last engagement of the Hundred Years' War, ended with the English losing all holdings in France except the Pale of Calais.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Battle_of_Castillon" target="_blank">Battle of Castillon</a> | <a href="https://en.wikipedia.org/wiki/Hundred_Years'_War" target="_blank">Hundred Years' War</a> | <a href="https://en.wikipedia.org/wiki/Pale_of_Calais" target="_blank">Pale of Calais</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🔮 历史暗流：假设这场事件背后其实有一个隐秘的组织在操纵，他们的终极目的是什么？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1992</div>
+            <div class="card-text">The Manchester Metrolink, the first modern street-running light-rail system in the United Kingdom, was officially opened.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Manchester_Metrolink" target="_blank">Manchester Metrolink</a> | <a href="https://en.wikipedia.org/wiki/Light_rail" target="_blank">Light rail</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🏰 空间构建：以此事件发生的核心场所为原型，描绘一个充满了悬疑与权力斗争的封闭舞台。</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1862</div>
+            <div class="card-text">The garrotting and robbery of James Pilkington, a British member of Parliament, led to a moral panic in London.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Garrote" target="_blank">Garrote</a> | <a href="https://en.wikipedia.org/wiki/James_Pilkington_(politician)" target="_blank">James Pilkington (politician)</a> | <a href="https://en.wikipedia.org/wiki/Member_of_Parliament_(United_Kingdom)" target="_blank">Member of Parliament (United Kingdom)</a> | <a href="https://en.wikipedia.org/wiki/London_garrotting_panics" target="_blank">London garrotting panics</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🔮 历史暗流：假设这场事件背后其实有一个隐秘的组织在操纵，他们的终极目的是什么？</div>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>
