@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Echoes of History - Blind Box</title>
+    <style>
+        :root { 
+            --parchment-bg: #fcf8f2; 
+            --parchment-border: #e8dfd1; 
+            --ink-dark: #2c2421; 
+            --ink-muted: #70625a; 
+            --imperial-blue: #1a365d; 
+            --accent-crimson: #8c1d40; 
+        }
+        body { 
+            background: var(--parchment-bg); 
+            color: var(--ink-dark); 
+            font-family: "Georgia", Garamond, serif; 
+            margin: 0; padding: 0; 
+            -webkit-font-smoothing: antialiased; 
+            line-height: 1.6;
+        }
+        .nav-header {
+            background: rgba(252, 248, 242, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--parchment-border);
+            padding: 15px 20px;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-header a {
+            color: var(--imperial-blue);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95rem;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 15px 60px 15px; }
+        
+        .box-title { text-align: center; margin-bottom: 40px; border-bottom: 2px double var(--parchment-border); padding-bottom: 20px; }
+        .box-title h1 { font-size: 2.2rem; font-weight: normal; margin: 0 0 10px 0; color: var(--accent-crimson); font-style: italic; }
+        .box-title p { margin: 0; color: var(--ink-muted); font-size: 0.95rem; letter-spacing: 1px; text-transform: uppercase; }
+        
+        .archive-card {
+            background: #ffffff;
+            border: 1px solid var(--parchment-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(44,36,33,0.03);
+            position: relative;
+        }
+        .card-epoch {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--accent-crimson);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .card-text {
+            font-size: 1.15rem;
+            color: var(--ink-dark);
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .wiki-refs {
+            font-size: 0.85rem;
+            color: var(--ink-muted);
+            border-top: 1px dashed var(--parchment-border);
+            padding-top: 12px;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+        }
+        .wiki-refs::-webkit-scrollbar { display: none; }
+        .wiki-refs a { color: var(--imperial-blue); text-decoration: none; font-weight: 500; margin: 0 2px; }
+        .wiki-refs a:hover { text-decoration: underline; }
+        
+        .inspiration-box {
+            background: #fdfbf7;
+            border-left: 3px solid var(--imperial-blue);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+        }
+        .prompt-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--imperial-blue);
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .prompt-body { font-size: 0.95rem; color: var(--ink-dark); font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="nav-header">
+        <a href="../../index.html">📜 Return to Chronicle</a>
+        <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">2026-07-22</span>
+    </div>
+    <div class="container">
+        <div class="box-title">
+            <h1>Echoes of History</h1>
+            <p>~ 今日份虚空历史盲盒 ~</p>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 838</div>
+            <div class="card-text">Arab–Byzantine wars: The forces of the Abbasid Caliphate defeated Byzantine troops led by Emperor Theophilos at the Battle of Anzen, near present-day Dazman, Turkey.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Arab%E2%80%93Byzantine_wars" target="_blank">Arab–Byzantine wars</a> | <a href="https://en.wikipedia.org/wiki/Abbasid_Caliphate" target="_blank">Abbasid Caliphate</a> | <a href="https://en.wikipedia.org/wiki/Byzantine_Empire" target="_blank">Byzantine Empire</a> | <a href="https://en.wikipedia.org/wiki/Theophilos_(emperor)" target="_blank">Theophilos (emperor)</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Anzen" target="_blank">Battle of Anzen</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1976</div>
+            <div class="card-text">Japan completed its last reparation to the Philippines for war crimes committed during imperial Japan's conquest of the country in the Second World War.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Philippines" target="_blank">Philippines</a> | <a href="https://en.wikipedia.org/wiki/Japanese_war_crimes" target="_blank">Japanese war crimes</a> | <a href="https://en.wikipedia.org/wiki/Japanese_occupation_of_the_Philippines" target="_blank">Japanese occupation of the Philippines</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">📜 编年史裂痕：如果某个关键人物在事件发生的五分钟前改变了主意，后世的版图会发生什么巨变？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1944</div>
+            <div class="card-text">World War II: In opposition to the government-in-exile based in London, the Soviet-backed Polish Committee of National Liberation was proclaimed to govern territory recaptured from Germany.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/World_War_II" target="_blank">World War II</a> | <a href="https://en.wikipedia.org/wiki/Polish_government-in-exile" target="_blank">Polish government-in-exile</a> | <a href="https://en.wikipedia.org/wiki/Polish_Committee_of_National_Liberation" target="_blank">Polish Committee of National Liberation</a> | <a href="https://en.wikipedia.org/wiki/Manifesto_of_the_Polish_Committee_of_National_Liberation" target="_blank">Manifesto of the Polish Committee of National Liberation</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1864</div>
+            <div class="card-text">American Civil War: Confederate forces unsuccessfully attacked Union troops at the Battle of Atlanta.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/American_Civil_War" target="_blank">American Civil War</a> | <a href="https://en.wikipedia.org/wiki/Confederate_States_Army" target="_blank">Confederate States Army</a> | <a href="https://en.wikipedia.org/wiki/Union_army" target="_blank">Union army</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Atlanta" target="_blank">Battle of Atlanta</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1691</div>
+            <div class="card-text">Williamite forces defeated the Jacobites at the Battle of Aughrim, the decisive battle of the Williamite War in Ireland.</div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Williamite" target="_blank">Williamite</a> | <a href="https://en.wikipedia.org/wiki/Jacobitism" target="_blank">Jacobitism</a> | <a href="https://en.wikipedia.org/wiki/Battle_of_Aughrim" target="_blank">Battle of Aughrim</a> | <a href="https://en.wikipedia.org/wiki/Williamite_War_in_Ireland" target="_blank">Williamite War in Ireland</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">⚔️ 世界观种子：如果事件中的核心矛盾发生在一个魔幻/蒸汽朋克世界，历史会如何脱轨？</div>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>
