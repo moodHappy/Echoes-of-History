@@ -51,7 +51,7 @@ function initAnnotations() {
             if (typeof marked !== 'undefined') view.innerHTML = marked.parse(rawText);
         }
 
-        // 移动端核心修复：改用 addEventListener 并阻止事件冒泡
+        // 移动端核心修复：拦截所有事件，防止穿透，并为输入框聚焦添加微小延迟（针对 iOS）
         toggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -64,7 +64,7 @@ function initAnnotations() {
                 if (!edit.value.trim()) {
                     view.style.display = 'none';
                     edit.style.display = 'block';
-                    edit.focus();
+                    setTimeout(() => edit.focus(), 50);
                 } else {
                     view.style.display = 'block';
                     edit.style.display = 'none';
@@ -76,7 +76,7 @@ function initAnnotations() {
             view.style.display = 'none';
             edit.style.display = 'block';
             edit.value = edit.value;
-            edit.focus();
+            setTimeout(() => edit.focus(), 50);
         };
 
         view.addEventListener('dblclick', () => {
@@ -99,7 +99,7 @@ function initAnnotations() {
             }
         }, {passive: true});
 
-        edit.onblur = () => {
+        edit.addEventListener('blur', () => {
             const newVal = edit.value.trim();
             try { view.innerHTML = newVal ? marked.parse(newVal) : ''; } catch(e){}
             edit.style.display = 'none';
@@ -117,7 +117,7 @@ function initAnnotations() {
                 edit.setAttribute('data-old-val', newVal);
                 scheduleSync();
             }
-        };
+        });
         edit.setAttribute('data-old-val', rawText);
     });
 }
@@ -278,7 +278,6 @@ def save_daily_blind_box(events, now_obj):
         if ev['links']:
             links_html = '<div class="wiki-refs"><b>References:</b> ' + " | ".join([f'<a href="{l["url"]}" target="_blank">{l["title"]}</a>' for l in ev['links']]) + '</div>'
 
-        # 修改核心1：将 🔴 直接写入 span 内
         events_html += f"""
         <div class="archive-card">
             <div class="card-epoch">📍 ANNO DOMINI {ev['year']}</div>
@@ -364,7 +363,6 @@ def save_daily_blind_box(events, now_obj):
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }}
         
-        /* 修改核心2：移除 inline 避免布局塌陷，并移除不需要的伪类，扩大移动端点击热区 */
         .para-wrap {{ position: relative; margin-bottom: 18px; }}
         .card-text {{ font-size: 1.15rem; color: var(--ink-dark); margin: 0; text-align: justify; line-height: 1.6; }}
         
@@ -377,12 +375,12 @@ def save_daily_blind_box(events, now_obj):
             vertical-align: baseline; 
             transition: all 0.2s; 
             user-select: none; 
-            padding: 6px 10px; /* 扩大移动端触控热区 */
+            padding: 6px 10px; 
             margin-top: -6px;
             margin-bottom: -6px;
             border-radius: 6px;
-            touch-action: manipulation; /* 消除双击缩放延迟 */
-            -webkit-tap-highlight-color: transparent; /* 消除移动端点击闪烁 */
+            touch-action: manipulation; 
+            -webkit-tap-highlight-color: transparent; 
         }}
         .anno-toggle:hover, .anno-toggle:active {{ opacity: 0.8; transform: scale(1.1); }}
         .anno-toggle.has-anno {{ opacity: 1; }}
@@ -443,11 +441,12 @@ def save_daily_blind_box(events, now_obj):
         </div>
         {events_html}
     </div>
-    <script id="matrix-engine">{{ENGINE_SCRIPT_PLACEHOLDER}}</script>
+    <script id="matrix-engine">###ENGINE_SCRIPT_PLACEHOLDER###</script>
 </body>
 </html>"""
 
-    html_content = html_content.replace("{{ENGINE_SCRIPT_PLACEHOLDER}}", ENGINE_SCRIPT)
+    # 修复核心：放弃可能被 f-string 转义的 {{}} 语法，直接使用 ### 包裹的占位符进行替换
+    html_content = html_content.replace("###ENGINE_SCRIPT_PLACEHOLDER###", ENGINE_SCRIPT)
 
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -514,20 +513,17 @@ def generate_chronicle_hub():
         .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial-dark); }
         .header-panel p { margin: 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted); }
         
-        /* 设置按钮 */
         .settings-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; cursor: pointer; color: #888; transition: transform 0.3s ease, color 0.2s; user-select: none; }
         .settings-btn:active, .settings-btn:hover { transform: rotate(90deg); color: #555; }
 
         .main-content { flex: 1; overflow-y: auto; padding: 20px 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         
-        /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
         .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
-        /* 羊皮纸日历架构 */
         .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -542,7 +538,6 @@ def generate_chronicle_hub():
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
-        /* 盲盒抽取结果列表 */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
         .feed-item-wrapper { display: flex; align-items: stretch; gap: 10px; width: 100%; transition: all 0.3s ease; }
         .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); min-width: 0; }
@@ -550,14 +545,12 @@ def generate_chronicle_hub():
         .feed-title { font-size: 14px; font-weight: bold; margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
         
-        /* 独立删除按钮 */
         .delete-btn { display: none; width: 56px; background-color: #ff3b30; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(255,59,48,0.2); transition: transform 0.1s; flex-shrink: 0; }
         .delete-btn:active { transform: scale(0.92); }
         .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* ======== 模态框样式 (本地配置中心) ======== */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
         
@@ -971,21 +964,4 @@ def generate_chronicle_hub():
         renderBoxList(selectedYear, selectedMonth, selectedDay);
     </script>
 </body>
-</html>"""
-
-    final_html = html_template.replace("{REPLACEME_JSON_DATA}", json_data)
-    with open(os.path.join(BASE_DIR, "index.html"), "w", encoding="utf-8") as f:
-        f.write(final_html)
-    print("🚀 主轴编年史大厅 index.html 编译同步完成！")
-
-if __name__ == "__main__":
-    os.makedirs(BASE_DIR, exist_ok=True)
-    now = datetime.now(tz_utc_8)
-
-    data = fetch_wikipedia_history(now.month, now.day)
-    if data:
-        best_events = extract_blind_box_events(data)
-        if best_events:
-            save_daily_blind_box(best_events, now)
-
-    generate_chronicle_hub()
+</html>
