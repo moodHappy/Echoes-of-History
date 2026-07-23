@@ -22,14 +22,12 @@ PROMPT_TEMPLATES = [
 ]
 
 # ================= 批注核心引擎 (JS) =================
-# 使用原生字符串(r)确保正则表达式和转义符安全注入
-ENGINE_SCRIPT = r"""
+ENGINE_SCRIPT = """
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
 let syncTimeout = null;
 function scheduleSync() {
     const statusMsg = document.getElementById('sync-status');
-    if (!statusMsg) return;
     statusMsg.style.display = 'inline-block';
     statusMsg.style.backgroundColor = '#f39c12';
     statusMsg.innerText = '⏳ 更改已记录，5秒后自动同步...';
@@ -47,19 +45,20 @@ function initAnnotations() {
         const toggle = wrap.querySelector('.anno-toggle');
         const box = wrap.querySelector('.anno-box');
 
-        if (!toggle || !box || !edit || !view) return;
-
         const rawText = edit.value.trim();
         if (rawText) {
             toggle.classList.add('has-anno');
             if (typeof marked !== 'undefined') view.innerHTML = marked.parse(rawText);
         }
 
-        // 使用 addEventListener 替代 onclick 提高移动端稳定性
+        // 移动端核心修复：改用 addEventListener 并阻止事件冒泡
         toggle.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
+            
             if (box.style.display === 'block') {
                 box.style.display = 'none';
+                wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
                 box.style.display = 'block';
                 if (!edit.value.trim()) {
@@ -82,6 +81,7 @@ function initAnnotations() {
 
         view.addEventListener('dblclick', () => {
             box.style.display = 'none';
+            wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
 
         let lastTap = 0;
@@ -93,12 +93,13 @@ function initAnnotations() {
                 const tapLength = currentTime - lastTap;
                 if (tapLength < 500 && tapLength > 0) {
                     box.style.display = 'none';
+                    wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
                 lastTap = currentTime;
             }
         }, {passive: true});
 
-        edit.addEventListener('blur', () => {
+        edit.onblur = () => {
             const newVal = edit.value.trim();
             try { view.innerHTML = newVal ? marked.parse(newVal) : ''; } catch(e){}
             edit.style.display = 'none';
@@ -116,17 +117,11 @@ function initAnnotations() {
                 edit.setAttribute('data-old-val', newVal);
                 scheduleSync();
             }
-        });
+        };
         edit.setAttribute('data-old-val', rawText);
     });
 }
-
-// 废弃 window.onload 避免被外部资源加载阻塞
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAnnotations);
-} else {
-    initAnnotations();
-}
+window.onload = initAnnotations;
 
 function reconstructSelfHTML() {
     document.querySelectorAll('.anno-edit').forEach(edit => {
@@ -142,7 +137,7 @@ function reconstructSelfHTML() {
     clone.querySelectorAll('.anno-view').forEach(view => view.style.display = 'none');
     clone.querySelectorAll('.anno-edit').forEach(edit => edit.style.display = 'none');
     
-    return `<!DOCTYPE html>\n<html lang="en">\n${clone.innerHTML}\n</html>`;
+    return "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n" + clone.innerHTML + "\\n</html>";
 }
 
 async function syncToGitHub() {
@@ -156,7 +151,6 @@ async function syncToGitHub() {
     }
 
     const statusMsg = document.getElementById('sync-status');
-    if(!statusMsg) return;
     statusMsg.style.display = 'inline-block';
     statusMsg.style.backgroundColor = '#2ea44f';
     statusMsg.innerText = '📡 同步中...';
@@ -164,7 +158,7 @@ async function syncToGitHub() {
     const pureHtml = reconstructSelfHTML();
     
     let urlPath = window.location.pathname;
-    const match = urlPath.match(/(\d{4}\/\d{1,2}\/[^/]+\.html)$/);
+    const match = urlPath.match(/(\\d{4}\\/\\d{1,2}\\/[^/]+\\.html)$/);
     let fileRelPath = match ? "docs/" + match[1] : (urlPath.includes('docs/') ? urlPath.substring(urlPath.indexOf('docs/')) : null);
     
     if (!fileRelPath) {
@@ -284,7 +278,7 @@ def save_daily_blind_box(events, now_obj):
         if ev['links']:
             links_html = '<div class="wiki-refs"><b>References:</b> ' + " | ".join([f'<a href="{l["url"]}" target="_blank">{l["title"]}</a>' for l in ev['links']]) + '</div>'
 
-        # 修改核心1：红点 🔴 被实体化放进标签内容中，不再依赖 CSS 伪类
+        # 修改核心1：将 🔴 直接写入 span 内
         events_html += f"""
         <div class="archive-card">
             <div class="card-epoch">📍 ANNO DOMINI {ev['year']}</div>
@@ -370,11 +364,27 @@ def save_daily_blind_box(events, now_obj):
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }}
         
-        /* 修改核心2：移除 inline 避免布局塌陷，并移除不需要的伪类 ::after */
+        /* 修改核心2：移除 inline 避免布局塌陷，并移除不需要的伪类，扩大移动端点击热区 */
         .para-wrap {{ position: relative; margin-bottom: 18px; }}
         .card-text {{ font-size: 1.15rem; color: var(--ink-dark); margin: 0; text-align: justify; line-height: 1.6; }}
-        .anno-toggle {{ display: inline-block; margin-left: 8px; cursor: pointer; opacity: 0.3; font-size: 0.85rem; vertical-align: baseline; transition: all 0.2s; user-select: none; padding: 2px 4px; border-radius: 4px; }}
-        .anno-toggle:hover {{ opacity: 0.8; transform: scale(1.1); }}
+        
+        .anno-toggle {{ 
+            display: inline-block; 
+            margin-left: 8px; 
+            cursor: pointer; 
+            opacity: 0.3; 
+            font-size: 0.85rem; 
+            vertical-align: baseline; 
+            transition: all 0.2s; 
+            user-select: none; 
+            padding: 6px 10px; /* 扩大移动端触控热区 */
+            margin-top: -6px;
+            margin-bottom: -6px;
+            border-radius: 6px;
+            touch-action: manipulation; /* 消除双击缩放延迟 */
+            -webkit-tap-highlight-color: transparent; /* 消除移动端点击闪烁 */
+        }}
+        .anno-toggle:hover, .anno-toggle:active {{ opacity: 0.8; transform: scale(1.1); }}
         .anno-toggle.has-anno {{ opacity: 1; }}
 
         .anno-box {{ display: none; margin-top: 12px; background: #fdfbf7; border-left: 4px solid var(--imperial-blue); padding: 12px 16px; border-radius: 0 6px 6px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }}
@@ -444,8 +454,6 @@ def save_daily_blind_box(events, now_obj):
     print(f"🎉 盲盒卷宗已封印入库，批注引擎已加载: {html_path}")
     return f"{year_str}/{month_str}/{filename}"
 
-
-# 下方的主页日历编译逻辑完全保持不变
 def generate_chronicle_hub():
     archive_data = {}
     if os.path.exists(BASE_DIR):
@@ -506,17 +514,20 @@ def generate_chronicle_hub():
         .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial-dark); }
         .header-panel p { margin: 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted); }
         
+        /* 设置按钮 */
         .settings-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; cursor: pointer; color: #888; transition: transform 0.3s ease, color 0.2s; user-select: none; }
         .settings-btn:active, .settings-btn:hover { transform: rotate(90deg); color: #555; }
 
         .main-content { flex: 1; overflow-y: auto; padding: 20px 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         
+        /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
         .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
+        /* 羊皮纸日历架构 */
         .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -531,6 +542,7 @@ def generate_chronicle_hub():
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
+        /* 盲盒抽取结果列表 */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
         .feed-item-wrapper { display: flex; align-items: stretch; gap: 10px; width: 100%; transition: all 0.3s ease; }
         .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); min-width: 0; }
@@ -538,12 +550,14 @@ def generate_chronicle_hub():
         .feed-title { font-size: 14px; font-weight: bold; margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
         
+        /* 独立删除按钮 */
         .delete-btn { display: none; width: 56px; background-color: #ff3b30; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(255,59,48,0.2); transition: transform 0.1s; flex-shrink: 0; }
         .delete-btn:active { transform: scale(0.92); }
         .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
+        /* ======== 模态框样式 (本地配置中心) ======== */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
         
@@ -666,7 +680,9 @@ def generate_chronicle_hub():
         }
 
         btnSettings.addEventListener('click', openConfigModal);
+
         btnCancel.addEventListener('click', () => { configModal.classList.remove('show'); });
+
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) configModal.classList.remove('show');
         });
