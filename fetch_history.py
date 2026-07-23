@@ -20,7 +20,196 @@ PROMPT_TEMPLATES = [
     "📜 编年史裂痕：如果某个关键人物在事件发生的五分钟前改变了主意，后世的版图会发生什么巨变？",
     "🏰 空间构建：以此事件发生的核心场所为原型，描绘一个充满了悬疑与权力斗争的封闭舞台。"
 ]
-# ==========================================
+
+# ================= 批注核心引擎 (JS) =================
+# 独立定义避免与 Python f-string 语法的大括号冲突
+ENGINE_SCRIPT = """
+const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+let syncTimeout = null;
+function scheduleSync() {
+    const statusMsg = document.getElementById('sync-status');
+    statusMsg.style.display = 'inline-block';
+    statusMsg.style.backgroundColor = '#f39c12';
+    statusMsg.innerText = '⏳ 更改已记录，5秒后自动同步...';
+    statusMsg.style.cursor = 'default';
+    statusMsg.onclick = null;
+
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(syncToGitHub, 5000);
+}
+
+function initAnnotations() {
+    document.querySelectorAll('.para-wrap').forEach(wrap => {
+        const view = wrap.querySelector('.anno-view');
+        const edit = wrap.querySelector('.anno-edit');
+        const toggle = wrap.querySelector('.anno-toggle');
+        const box = wrap.querySelector('.anno-box');
+
+        const rawText = edit.value.trim();
+        if (rawText) {
+            toggle.classList.add('has-anno');
+            if (typeof marked !== 'undefined') view.innerHTML = marked.parse(rawText);
+        }
+
+        toggle.onclick = () => {
+            if (box.style.display === 'block') {
+                box.style.display = 'none';
+                wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                box.style.display = 'block';
+                if (!edit.value.trim()) {
+                    view.style.display = 'none';
+                    edit.style.display = 'block';
+                    edit.focus();
+                } else {
+                    view.style.display = 'block';
+                    edit.style.display = 'none';
+                }
+            }
+        };
+
+        const triggerEdit = () => {
+            view.style.display = 'none';
+            edit.style.display = 'block';
+            edit.value = edit.value;
+            edit.focus();
+        };
+
+        view.addEventListener('dblclick', () => {
+            box.style.display = 'none';
+            wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        let lastTap = 0;
+        view.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                triggerEdit();
+            } else if (e.touches.length === 1) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 500 && tapLength > 0) {
+                    box.style.display = 'none';
+                    wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                lastTap = currentTime;
+            }
+        }, {passive: true});
+
+        edit.onblur = () => {
+            const newVal = edit.value.trim();
+            try { view.innerHTML = newVal ? marked.parse(newVal) : ''; } catch(e){}
+            edit.style.display = 'none';
+
+            if (newVal) {
+                view.style.display = 'block';
+                toggle.classList.add('has-anno');
+            } else {
+                view.style.display = 'none';
+                box.style.display = 'none';
+                toggle.classList.remove('has-anno');
+            }
+
+            if (edit.getAttribute('data-old-val') !== newVal) {
+                edit.setAttribute('data-old-val', newVal);
+                scheduleSync();
+            }
+        };
+        edit.setAttribute('data-old-val', rawText);
+    });
+}
+window.onload = initAnnotations;
+
+function reconstructSelfHTML() {
+    // 强制将输入框的值同步到 DOM 节点的 textContent 中，确保 clone 时内容被保留
+    document.querySelectorAll('.anno-edit').forEach(edit => {
+        edit.textContent = edit.value;
+    });
+
+    const clone = document.documentElement.cloneNode(true);
+    
+    // 清理 UI 状态，使其恢复为干净的静态页面
+    const statusMsg = clone.querySelector('#sync-status');
+    if(statusMsg) statusMsg.style.display = 'none';
+    
+    clone.querySelectorAll('.anno-box').forEach(box => box.style.display = 'none');
+    clone.querySelectorAll('.anno-view').forEach(view => view.style.display = 'none');
+    clone.querySelectorAll('.anno-edit').forEach(edit => edit.style.display = 'none');
+    
+    return "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n" + clone.innerHTML + "\\n</html>";
+}
+
+async function syncToGitHub() {
+    // 自动读取日历大厅保存的 Token 配置
+    const token = localStorage.getItem('gh_token');
+    const owner = localStorage.getItem('gh_user');
+    const repo = localStorage.getItem('gh_repo');
+    
+    if(!token || !owner || !repo) {
+        alert('缺少 GitHub Token 或配置，无法同步批注！请先在日历大厅右上角配置。');
+        return;
+    }
+
+    const statusMsg = document.getElementById('sync-status');
+    statusMsg.style.display = 'inline-block';
+    statusMsg.style.backgroundColor = '#2ea44f';
+    statusMsg.innerText = '📡 同步中...';
+
+    const pureHtml = reconstructSelfHTML();
+    
+    // 智能解析相对路径 (兼容本地测试和 GitHub Pages 部署)
+    let urlPath = window.location.pathname;
+    const match = urlPath.match(/(\\d{4}\\/\\d{1,2}\\/[^/]+\\.html)$/);
+    let fileRelPath = match ? "docs/" + match[1] : (urlPath.includes('docs/') ? urlPath.substring(urlPath.indexOf('docs/')) : null);
+    
+    if (!fileRelPath) {
+        alert('文件路径解析失败，无法同步！');
+        statusMsg.style.display = 'none';
+        return;
+    }
+
+    try {
+        const base64Html = btoa(unescape(encodeURIComponent(pureHtml)));
+
+        const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${fileRelPath}?t=${Date.now()}`, {
+            headers: { 'Authorization': `token ${token}` },
+            cache: 'no-store'
+        });
+
+        if (!getRes.ok) throw new Error('API 获取 SHA 失败');
+        const fileData = await getRes.json();
+
+        const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${fileRelPath}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: `Auto-save annotation for Blind Box`, content: base64Html, sha: fileData.sha })
+        });
+
+        if(putRes.ok) {
+            statusMsg.style.backgroundColor = '#2ea44f';
+            statusMsg.innerText = '✅ 云端已同步';
+            setTimeout(() => {
+                if (statusMsg.innerText === '✅ 云端已同步') {
+                    statusMsg.style.display = 'none';
+                }
+            }, 3000);
+        } else {
+            throw new Error('Put 请求失败');
+        }
+    } catch(e) {
+        console.error(e);
+        statusMsg.style.backgroundColor = '#e74c3c';
+        statusMsg.innerText = '❌ 同步失败 (点击重试)';
+        statusMsg.style.cursor = 'pointer';
+        statusMsg.onclick = () => {
+            statusMsg.onclick = null;
+            statusMsg.style.cursor = 'default';
+            syncToGitHub();
+        };
+    }
+}
+"""
+# ==================================================
 
 def fetch_wikipedia_history(month, day):
     """利用英文维基百科开放 API 获取指定日期的历史事件数据"""
@@ -59,14 +248,12 @@ def extract_blind_box_events(data):
                     "url": p.get('content_urls', {}).get('desktop', {}).get('page', '')
                 })
 
-        # 智能权重打分机制：文本包含特定历史偏好词时获得更高权重
         score = 0
         text_lower = text.lower()
         for kw in PREFERENCE_KEYWORDS:
             if kw in text_lower:
                 score += 10
 
-        # 加上随机微扰，确保每天的盲盒极具随机新鲜感
         score += random.randint(1, 5)
 
         scored_events.append({
@@ -76,12 +263,11 @@ def extract_blind_box_events(data):
             "score": score
         })
 
-    # 按权重分数从高到低排序，盲盒抽取前 5 强
     scored_events.sort(key=lambda x: x['score'], reverse=True)
     return scored_events[:5]
 
 def save_daily_blind_box(events, now_obj):
-    """将今日盲盒渲染成羊皮纸古典美学排版的独立精读页面"""
+    """将今日盲盒渲染成羊皮纸古典美学排版，并集成自推送批注引擎"""
     year_str, month_str = str(now_obj.year), str(now_obj.month)
     target_dir = os.path.join(BASE_DIR, year_str, month_str)
     os.makedirs(target_dir, exist_ok=True)
@@ -96,10 +282,17 @@ def save_daily_blind_box(events, now_obj):
         if ev['links']:
             links_html = '<div class="wiki-refs"><b>References:</b> ' + " | ".join([f'<a href="{l["url"]}" target="_blank">{l["title"]}</a>' for l in ev['links']]) + '</div>'
 
+        # 修改核心：将事件正文包裹进 para-wrap 批注结构
         events_html += f"""
         <div class="archive-card">
             <div class="card-epoch">📍 ANNO DOMINI {ev['year']}</div>
-            <div class="card-text">{ev['text']}</div>
+            <div class="para-wrap">
+                <p class="card-text">{ev['text']}<span class="anno-toggle"></span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
             {links_html}
             <div class="inspiration-box">
                 <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
@@ -108,12 +301,14 @@ def save_daily_blind_box(events, now_obj):
         </div>
         """
 
+    # 新增 marked.js 和批注专用的 CSS
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Echoes of History - Blind Box</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {{ 
             --parchment-bg: #fcf8f2; 
@@ -146,6 +341,11 @@ def save_daily_blind_box(events, now_obj):
             font-size: 0.95rem;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }}
+        .header-right {{ display: flex; align-items: center; gap: 12px; }}
+        
+        /* 状态按钮样式 */
+        .sync-status {{ padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: none; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-family: -apple-system, sans-serif; }}
+
         .container {{ max-width: 650px; margin: 0 auto; padding: 30px 15px 60px 15px; }}
         
         .box-title {{ text-align: center; margin-bottom: 40px; border-bottom: 2px double var(--parchment-border); padding-bottom: 20px; }}
@@ -169,12 +369,28 @@ def save_daily_blind_box(events, now_obj):
             margin-bottom: 12px;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }}
-        .card-text {{
-            font-size: 1.15rem;
-            color: var(--ink-dark);
-            margin-bottom: 15px;
-            text-align: justify;
-        }}
+        
+        /* 段落与批注核心样式 */
+        .para-wrap {{ position: relative; margin-bottom: 15px; }}
+        .card-text {{ font-size: 1.15rem; color: var(--ink-dark); margin: 0; text-align: justify; display: inline; }}
+        .anno-toggle {{ display: inline-flex; margin-left: 8px; cursor: pointer; opacity: 0.2; font-size: 0.7rem; vertical-align: middle; transition: all 0.2s; user-select: none; font-family: sans-serif; }}
+        .anno-toggle:hover {{ opacity: 0.8; transform: scale(1.1); }}
+        .anno-toggle.has-anno {{ opacity: 1; }}
+        .anno-toggle::after {{ content: "🔴"; }}
+
+        .anno-box {{ display: none; margin-top: 12px; background: #fdfbf7; border-left: 4px solid var(--imperial-blue); padding: 12px 16px; border-radius: 0 6px 6px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }}
+        .anno-view {{ font-size: 1.05rem; line-height: 1.6; color: var(--ink-dark); min-height: 24px; }}
+        .anno-edit {{ width: 100%; min-height: 100px; padding: 10px; font-family: monospace; font-size: 0.95rem; border: 1px dashed var(--parchment-border); border-radius: 6px; box-sizing: border-box; resize: vertical; display: none; background: #fff; color: #333; outline: none; }}
+        .anno-edit:focus {{ border: 1px solid var(--imperial-blue); box-shadow: 0 0 0 3px rgba(26,54,93,0.1); }}
+        
+        /* 迷你 Markdown 渲染器优化 */
+        .markdown-body p {{ margin-top: 0; margin-bottom: 8px; }}
+        .markdown-body p:last-child {{ margin-bottom: 0; }}
+        .markdown-body p:empty {{ display: none; }}
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {{ color: var(--imperial-blue); font-size: 1.15rem; margin: 10px 0 8px 0; border-bottom: 1px dashed var(--parchment-border); padding-bottom: 4px; }}
+        .markdown-body ul, .markdown-body ol {{ margin: 0 0 8px 0; padding-left: 20px; }}
+        .markdown-body blockquote {{ margin: 0 0 10px 0; padding: 10px 15px; background: rgba(26,54,93,0.05); border-left: 4px solid var(--imperial-blue); color: var(--ink-muted); }}
+
         .wiki-refs {{
             font-size: 0.85rem;
             color: var(--ink-muted);
@@ -207,7 +423,10 @@ def save_daily_blind_box(events, now_obj):
 <body>
     <div class="nav-header">
         <a href="../../index.html">📜 Return to Chronicle</a>
-        <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">{now_obj.strftime('%Y-%m-%d')}</span>
+        <div class="header-right">
+            <span class="sync-status" id="sync-status">📡 同步中...</span>
+            <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">{now_obj.strftime('%Y-%m-%d')}</span>
+        </div>
     </div>
     <div class="container">
         <div class="box-title">
@@ -216,12 +435,16 @@ def save_daily_blind_box(events, now_obj):
         </div>
         {events_html}
     </div>
+    <script id="matrix-engine">{{ENGINE_SCRIPT_PLACEHOLDER}}</script>
 </body>
 </html>"""
 
+    # 使用 replace 注入 JS，防止 Python 的 f-string 语法和 JS 内部的大括号冲突引发 KeyError
+    html_content = html_content.replace("{{ENGINE_SCRIPT_PLACEHOLDER}}", ENGINE_SCRIPT)
+
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print(f"🎉 盲盒卷宗已封印入库: {html_path}")
+    print(f"🎉 盲盒卷宗已封印入库，批注引擎已加载: {html_path}")
     return f"{year_str}/{month_str}/{filename}"
 
 def generate_chronicle_hub():
@@ -496,7 +719,6 @@ def generate_chronicle_hub():
             yearSelect.innerHTML = '';
             const currentY = today.getFullYear();
             
-            // 完整生成当前年份到未来50年的日历范围，去掉了过去50年
             for (let y = currentY; y <= currentY + 50; y++) {
                 const opt = document.createElement('option'); 
                 opt.value = y; 
@@ -513,7 +735,6 @@ def generate_chronicle_hub():
 
         function updateMonthDropdown(year) {
             monthSelect.innerHTML = '';
-            // 完整渲染 1 - 12 月
             for (let m = 1; m <= 12; m++) {
                 const opt = document.createElement('option'); 
                 opt.value = m; 
@@ -522,7 +743,6 @@ def generate_chronicle_hub():
             }
             monthSelect.value = selectedMonth;
             
-            // 边界检查：防止溢出（例如 1 月 31 日切到 2 月时，退回 2 月最后一天）
             const daysInMonth = new Date(year, selectedMonth, 0).getDate();
             if (selectedDay > daysInMonth) selectedDay = daysInMonth;
         }
@@ -544,7 +764,6 @@ def generate_chronicle_hub():
                 const cell = document.createElement('div'); cell.className = 'day-cell'; cell.textContent = day;
                 const dot = document.createElement('div'); dot.className = 'dot'; cell.appendChild(dot);
                 
-                // 恢复正常视觉展示
                 if (monthData[day] && monthData[day].length > 0) cell.classList.add('has-news'); else cell.classList.add('no-news');
                 if (year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate()) cell.classList.add('today');
                 if (year === selectedYear && month === selectedMonth && day === selectedDay) cell.classList.add('selected');
@@ -593,7 +812,6 @@ def generate_chronicle_hub():
             }
         }
 
-        // ==== 同步修改远端 index.html 的 JSON ====
         async function syncIndexHtmlToGithub(token, user, repoName) {
             const repo = `${user}/${repoName}`;
             const indexPath = `docs/index.html`;
@@ -624,7 +842,6 @@ def generate_chronicle_hub():
             }
         }
 
-        // ==== GitHub API 销毁文件逻辑 ====
         async function handleDeleteItem(year, month, day, index, filePath) {
             if (!confirm("确定要彻底销毁这篇历史盲盒吗？")) return;
             
@@ -700,13 +917,11 @@ def generate_chronicle_hub():
             renderBoxList(selectedYear, selectedMonth, selectedDay); 
         });
         
-        // 恢复为标准的前后翻月控制，不挑年份/月份跳变
         document.getElementById('prevBtn').addEventListener('click', () => { 
             selectedMonth--;
             if (selectedMonth < 1) {
                 selectedMonth = 12;
                 selectedYear--;
-                // 确保不会翻出设定的年份下限
                 if (selectedYear < today.getFullYear()) {
                     selectedYear = today.getFullYear();
                     selectedMonth = 1;
@@ -766,13 +981,10 @@ if __name__ == "__main__":
     os.makedirs(BASE_DIR, exist_ok=True)
     now = datetime.now(tz_utc_8)
 
-    # 自动获取今日维基百科快讯
     data = fetch_wikipedia_history(now.month, now.day)
     if data:
         best_events = extract_blind_box_events(data)
         if best_events:
             save_daily_blind_box(best_events, now)
 
-    # 全自动刷新日历主视图索引
     generate_chronicle_hub()
-
