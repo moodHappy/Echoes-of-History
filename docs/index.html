@@ -28,27 +28,23 @@
         .header-panel h1 { font-size: 2.4rem; font-weight: normal; margin: 0 0 8px 0; font-style: italic; color: var(--imperial-dark); }
         .header-panel p { margin: 0; font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-muted); }
         
-        /* 设置按钮 */
         .settings-btn { position: absolute; top: 25px; right: 25px; font-size: 24px; cursor: pointer; color: #888; transition: transform 0.3s ease, color 0.2s; user-select: none; }
         .settings-btn:active, .settings-btn:hover { transform: rotate(90deg); color: #555; }
 
         .main-content { flex: 1; overflow-y: auto; padding: 20px 15px; }
         .container { max-width: 600px; margin: 0 auto; }
         
-        /* 日历控制条 */
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
         .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
         .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
-        /* 羊皮纸日历架构 */
         .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
         .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
         .day-cell { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; position: relative; transition: all 0.2s; }
         .day-cell.empty { visibility: hidden; }
         
-        /* 核心修复：恢复日历网格完整性，没内容的仅置灰 */
         .day-cell.has-news { color: var(--ink-dark); }
         .day-cell.no-news { color: #d0c8be; }
         
@@ -57,7 +53,6 @@
         .dot { width: 5px; height: 5px; background-color: var(--imperial); border-radius: 50%; position: absolute; bottom: 6px; display: none; }
         .day-cell.has-news .dot { display: block; }
         
-        /* 盲盒抽取结果列表 */
         .feed-list { display: flex; flex-direction: column; gap: 12px; }
         .feed-item-wrapper { display: flex; align-items: stretch; gap: 10px; width: 100%; transition: all 0.3s ease; }
         .feed-item { flex: 1; background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 12px; padding: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--ink-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.01); border-left: 4px solid var(--imperial); min-width: 0; }
@@ -65,14 +60,12 @@
         .feed-title { font-size: 14px; font-weight: bold; margin-left: 15px; text-align: left; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--imperial); }
         .empty-placeholder { text-align: center; padding: 40px 20px; color: var(--ink-muted); font-size: 14px; background: var(--card-bg); border: 1px dashed var(--parchment-border); border-radius: 12px; font-style: italic; }
         
-        /* 独立删除按钮 */
         .delete-btn { display: none; width: 56px; background-color: #ff3b30; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(255,59,48,0.2); transition: transform 0.1s; flex-shrink: 0; }
         .delete-btn:active { transform: scale(0.92); }
         .delete-btn.show { display: flex; animation: slideIn 0.2s ease forwards; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* ======== 模态框样式 (本地配置中心) ======== */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
         
@@ -152,10 +145,9 @@
 
     <script>
         // ===DATA_START===
-        let archiveData = {"2026":{"6":{"26":[{"time":"23:58","path":"2026/6/2026_6_26_2358.html","title":"🔮 历史灵感盲盒已送达"}],"30":[{"time":"01:31","path":"2026/6/2026_6_30_0131.html","title":"🔮 历史灵感盲盒已送达"}]},"7":{"2":[{"time":"10:45","path":"2026/7/2026_7_2_1045.html","title":"🔮 历史灵感盲盒已送达"}],"3":[{"time":"19:03","path":"2026/7/2026_7_3_1903.html","title":"🔮 历史灵感盲盒已送达"}],"4":[{"time":"00:21","path":"2026/7/2026_7_4_0021.html","title":"🔮 历史灵感盲盒已送达"}],"6":[{"time":"00:02","path":"2026/7/2026_7_6_0002.html","title":"🔮 历史灵感盲盒已送达"}],"7":[{"time":"01:38","path":"2026/7/2026_7_7_0138.html","title":"🔮 历史灵感盲盒已送达"}],"8":[{"time":"01:08","path":"2026/7/2026_7_8_0108.html","title":"🔮 历史灵感盲盒已送达"}],"9":[{"time":"00:26","path":"2026/7/2026_7_9_0026.html","title":"🔮 历史灵感盲盒已送达"}],"10":[{"time":"01:17","path":"2026/7/2026_7_10_0117.html","title":"🔮 历史灵感盲盒已送达"}],"11":[{"time":"23:49","path":"2026/7/2026_7_11_2349.html","title":"🔮 历史灵感盲盒已送达"},{"time":"00:51","path":"2026/7/2026_7_11_0051.html","title":"🔮 历史灵感盲盒已送达"}],"12":[{"time":"23:54","path":"2026/7/2026_7_12_2354.html","title":"🔮 历史灵感盲盒已送达"}],"14":[{"time":"01:10","path":"2026/7/2026_7_14_0110.html","title":"🔮 历史灵感盲盒已送达"}],"15":[{"time":"00:10","path":"2026/7/2026_7_15_0010.html","title":"🔮 历史灵感盲盒已送达"}],"16":[{"time":"00:16","path":"2026/7/2026_7_16_0016.html","title":"🔮 历史灵感盲盒已送达"}],"17":[{"time":"00:13","path":"2026/7/2026_7_17_0013.html","title":"🔮 历史灵感盲盒已送达"}],"18":[{"time":"23:51","path":"2026/7/2026_7_18_2351.html","title":"🔮 历史灵感盲盒已送达"},{"time":"00:10","path":"2026/7/2026_7_18_0010.html","title":"🔮 历史灵感盲盒已送达"}],"19":[{"time":"23:52","path":"2026/7/2026_7_19_2352.html","title":"🔮 历史灵感盲盒已送达"}],"21":[{"time":"00:21","path":"2026/7/2026_7_21_0021.html","title":"🔮 历史灵感盲盒已送达"}],"22":[{"time":"00:19","path":"2026/7/2026_7_22_0019.html","title":"🔮 历史灵感盲盒已送达"}],"23":[{"time":"17:26","path":"2026/7/2026_7_23_1726.html","title":"🔮 历史灵感盲盒已送达"}]}}};
+        let archiveData = {"2026": {"6": {"30": [{"time": "01:31", "path": "2026/6/2026_6_30_0131.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "26": [{"time": "23:58", "path": "2026/6/2026_6_26_2358.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}, "7": {"9": [{"time": "00:26", "path": "2026/7/2026_7_9_0026.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "8": [{"time": "01:08", "path": "2026/7/2026_7_8_0108.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "7": [{"time": "01:38", "path": "2026/7/2026_7_7_0138.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "6": [{"time": "00:02", "path": "2026/7/2026_7_6_0002.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "4": [{"time": "00:21", "path": "2026/7/2026_7_4_0021.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "3": [{"time": "19:03", "path": "2026/7/2026_7_3_1903.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "2": [{"time": "10:45", "path": "2026/7/2026_7_2_1045.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "23": [{"time": "17:37", "path": "2026/7/2026_7_23_1737.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "17:26", "path": "2026/7/2026_7_23_1726.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "22": [{"time": "00:19", "path": "2026/7/2026_7_22_0019.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "21": [{"time": "00:21", "path": "2026/7/2026_7_21_0021.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "19": [{"time": "23:52", "path": "2026/7/2026_7_19_2352.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "18": [{"time": "23:51", "path": "2026/7/2026_7_18_2351.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:10", "path": "2026/7/2026_7_18_0010.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "17": [{"time": "00:13", "path": "2026/7/2026_7_17_0013.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "16": [{"time": "00:16", "path": "2026/7/2026_7_16_0016.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "15": [{"time": "00:10", "path": "2026/7/2026_7_15_0010.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "14": [{"time": "01:10", "path": "2026/7/2026_7_14_0110.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "12": [{"time": "23:54", "path": "2026/7/2026_7_12_2354.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "11": [{"time": "23:49", "path": "2026/7/2026_7_11_2349.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}, {"time": "00:51", "path": "2026/7/2026_7_11_0051.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}], "10": [{"time": "01:17", "path": "2026/7/2026_7_10_0117.html", "title": "\ud83d\udd2e \u5386\u53f2\u7075\u611f\u76f2\u76d2\u5df2\u9001\u8fbe"}]}}};
         // ===DATA_END===
         
-        // === 本地防缓存黑名单过滤拦截 ===
         const deletedPaths = JSON.parse(localStorage.getItem('deleted_paths') || '[]');
         for (let y in archiveData) {
             for (let m in archiveData[y]) {
@@ -180,7 +172,6 @@
         const feedList = document.getElementById('feedList');
         const calendarBox = document.getElementById('calendarBox');
 
-        // ---- 配置中心逻辑 ----
         const configModal = document.getElementById('configModal');
         const btnSettings = document.getElementById('btnSettings');
         const btnCancel = document.getElementById('btnCancel');
@@ -197,9 +188,7 @@
         }
 
         btnSettings.addEventListener('click', openConfigModal);
-
         btnCancel.addEventListener('click', () => { configModal.classList.remove('show'); });
-
         configModal.addEventListener('click', (e) => {
             if (e.target === configModal) configModal.classList.remove('show');
         });
@@ -211,7 +200,6 @@
             configModal.classList.remove('show');
         });
 
-        // ==== 移动端双击检测 ====
         let lastTapTime = 0;
         calendarBox.addEventListener('touchstart', function(e) {
             const currentTime = new Date().getTime();
@@ -234,7 +222,6 @@
             }
         }
 
-        // ================= 重构日历渲染逻辑 =================
         function initDropdowns() {
             yearSelect.innerHTML = '';
             const currentY = today.getFullYear();

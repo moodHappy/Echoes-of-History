@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Echoes of History - Blind Box</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root { 
+            --parchment-bg: #fcf8f2; 
+            --parchment-border: #e8dfd1; 
+            --ink-dark: #2c2421; 
+            --ink-muted: #70625a; 
+            --imperial-blue: #1a365d; 
+            --accent-crimson: #8c1d40; 
+        }
+        body { 
+            background: var(--parchment-bg); 
+            color: var(--ink-dark); 
+            font-family: "Georgia", Garamond, serif; 
+            margin: 0; padding: 0; 
+            -webkit-font-smoothing: antialiased; 
+            line-height: 1.6;
+        }
+        .nav-header {
+            background: rgba(252, 248, 242, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--parchment-border);
+            padding: 15px 20px;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-header a {
+            color: var(--imperial-blue);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95rem;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        
+        .sync-status { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: none; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); font-family: -apple-system, sans-serif; }
+
+        .container { max-width: 650px; margin: 0 auto; padding: 30px 15px 60px 15px; }
+        
+        .box-title { text-align: center; margin-bottom: 40px; border-bottom: 2px double var(--parchment-border); padding-bottom: 20px; }
+        .box-title h1 { font-size: 2.2rem; font-weight: normal; margin: 0 0 10px 0; color: var(--accent-crimson); font-style: italic; }
+        .box-title p { margin: 0; color: var(--ink-muted); font-size: 0.95rem; letter-spacing: 1px; text-transform: uppercase; }
+        
+        .archive-card {
+            background: #ffffff;
+            border: 1px solid var(--parchment-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(44,36,33,0.03);
+            position: relative;
+        }
+        .card-epoch {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--accent-crimson);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        /* 修改核心2：移除 inline 避免布局塌陷，并移除不需要的伪类 ::after */
+        .para-wrap { position: relative; margin-bottom: 18px; }
+        .card-text { font-size: 1.15rem; color: var(--ink-dark); margin: 0; text-align: justify; line-height: 1.6; }
+        .anno-toggle { display: inline-block; margin-left: 8px; cursor: pointer; opacity: 0.3; font-size: 0.85rem; vertical-align: baseline; transition: all 0.2s; user-select: none; padding: 2px 4px; border-radius: 4px; }
+        .anno-toggle:hover { opacity: 0.8; transform: scale(1.1); }
+        .anno-toggle.has-anno { opacity: 1; }
+
+        .anno-box { display: none; margin-top: 12px; background: #fdfbf7; border-left: 4px solid var(--imperial-blue); padding: 12px 16px; border-radius: 0 6px 6px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .anno-view { font-size: 1.05rem; line-height: 1.6; color: var(--ink-dark); min-height: 24px; }
+        .anno-edit { width: 100%; min-height: 100px; padding: 10px; font-family: monospace; font-size: 0.95rem; border: 1px dashed var(--parchment-border); border-radius: 6px; box-sizing: border-box; resize: vertical; display: none; background: #fff; color: #333; outline: none; }
+        .anno-edit:focus { border: 1px solid var(--imperial-blue); box-shadow: 0 0 0 3px rgba(26,54,93,0.1); }
+        
+        .markdown-body p { margin-top: 0; margin-bottom: 8px; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        .markdown-body p:empty { display: none; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: var(--imperial-blue); font-size: 1.15rem; margin: 10px 0 8px 0; border-bottom: 1px dashed var(--parchment-border); padding-bottom: 4px; }
+        .markdown-body ul, .markdown-body ol { margin: 0 0 8px 0; padding-left: 20px; }
+        .markdown-body blockquote { margin: 0 0 10px 0; padding: 10px 15px; background: rgba(26,54,93,0.05); border-left: 4px solid var(--imperial-blue); color: var(--ink-muted); }
+
+        .wiki-refs {
+            font-size: 0.85rem;
+            color: var(--ink-muted);
+            border-top: 1px dashed var(--parchment-border);
+            padding-top: 12px;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+        }
+        .wiki-refs::-webkit-scrollbar { display: none; }
+        .wiki-refs a { color: var(--imperial-blue); text-decoration: none; font-weight: 500; margin: 0 2px; }
+        .wiki-refs a:hover { text-decoration: underline; }
+        
+        .inspiration-box {
+            background: #fdfbf7;
+            border-left: 3px solid var(--imperial-blue);
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+        }
+        .prompt-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--imperial-blue);
+            margin-bottom: 6px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .prompt-body { font-size: 0.95rem; color: var(--ink-dark); font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="nav-header">
+        <a href="../../index.html">📜 Return to Chronicle</a>
+        <div class="header-right">
+            <span class="sync-status" id="sync-status">📡 同步中...</span>
+            <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">2026-07-23</span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="box-title">
+            <h1>Echoes of History</h1>
+            <p>~ 今日份虚空历史盲盒 ~</p>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1968</div>
+            <div class="para-wrap">
+                <p class="card-text">A shootout between police and a Black power group began in Cleveland, Ohio, sparking three days of rioting.<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Glenville_shootout" target="_blank">Glenville shootout</a> | <a href="https://en.wikipedia.org/wiki/Black_power" target="_blank">Black power</a> | <a href="https://en.wikipedia.org/wiki/Cleveland" target="_blank">Cleveland</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🏰 空间构建：以此事件发生的核心场所为原型，描绘一个充满了悬疑与权力斗争的封闭舞台。</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1891</div>
+            <div class="para-wrap">
+                <p class="card-text">During a visit of the French Navy to Kronstadt in Russia, the two nations reached a secret agreement on a joint response to any future war in Europe.<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Kronstadt%E2%80%93Toulon_naval_visits" target="_blank">Kronstadt–Toulon naval visits</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">⚔️ 世界观种子：如果事件中的核心矛盾发生在一个魔幻/蒸汽朋克世界，历史会如何脱轨？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1942</div>
+            <div class="para-wrap">
+                <p class="card-text">The Holocaust: The gas chambers at Treblinka extermination camp began operation, killing 6,500 Jews who had been transported from the Warsaw Ghetto the day before.<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/The_Holocaust" target="_blank">The Holocaust</a> | <a href="https://en.wikipedia.org/wiki/Gas_chamber" target="_blank">Gas chamber</a> | <a href="https://en.wikipedia.org/wiki/Treblinka_extermination_camp" target="_blank">Treblinka extermination camp</a> | <a href="https://en.wikipedia.org/wiki/Warsaw_Ghetto" target="_blank">Warsaw Ghetto</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">📜 编年史裂痕：如果某个关键人物在事件发生的五分钟前改变了主意，后世的版图会发生什么巨变？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1860</div>
+            <div class="para-wrap">
+                <p class="card-text">The trial of the Eastbourne manslaughter, which later became an important legal precedent in the United Kingdom for discussions of corporal punishment in schools, began in Lewes.<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/Eastbourne_manslaughter" target="_blank">Eastbourne manslaughter</a> | <a href="https://en.wikipedia.org/wiki/Precedent" target="_blank">Precedent</a> | <a href="https://en.wikipedia.org/wiki/Corporal_punishment" target="_blank">Corporal punishment</a> | <a href="https://en.wikipedia.org/wiki/Lewes" target="_blank">Lewes</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🔮 历史暗流：假设这场事件背后其实有一个隐秘的组织在操纵，他们的终极目的是什么？</div>
+            </div>
+        </div>
+        
+        <div class="archive-card">
+            <div class="card-epoch">📍 ANNO DOMINI 1999</div>
+            <div class="para-wrap">
+                <p class="card-text">Forty-seven people were arrested in Tulia, Texas, for dealing cocaine; 35 of them were pardoned by the governor of Texas years later.<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <div class="anno-box" style="display:none;">
+                    <div class="anno-view markdown-body"></div>
+                    <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
+                </div>
+            </div>
+            <div class="wiki-refs"><b>References:</b> <a href="https://en.wikipedia.org/wiki/1999_Tulia_drug_arrests" target="_blank">1999 Tulia drug arrests</a> | <a href="https://en.wikipedia.org/wiki/Tulia%2C_Texas" target="_blank">Tulia, Texas</a> | <a href="https://en.wikipedia.org/wiki/Cocaine" target="_blank">Cocaine</a> | <a href="https://en.wikipedia.org/wiki/Pardon" target="_blank">Pardon</a> | <a href="https://en.wikipedia.org/wiki/Governor_of_Texas" target="_blank">Governor of Texas</a></div>
+            <div class="inspiration-box">
+                <div class="prompt-title">📝 灵感回响 (Inspiration Spark)</div>
+                <div class="prompt-body">🎭 角色切入点：塑造一个身处这场历史漩涡最底层的普通人，他/她将如何做出一项艰难的抉择？</div>
+            </div>
+        </div>
+        
+    </div>
+    <script id="matrix-engine">{ENGINE_SCRIPT_PLACEHOLDER}</script>
+</body>
+</html>
