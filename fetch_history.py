@@ -1,4 +1,3 @@
-
 import os
 import requests
 import json
@@ -23,7 +22,8 @@ PROMPT_TEMPLATES = [
 ]
 
 # ================= 批注核心引擎 (JS) =================
-ENGINE_SCRIPT = """
+# 使用 r"""...""" (Raw String) 防止 Python 吞掉正则表达式里的反斜杠 \d \/ 导致 JS 语法错误
+ENGINE_SCRIPT = r"""
 const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
 let syncTimeout = null;
@@ -52,7 +52,7 @@ function initAnnotations() {
             if (typeof marked !== 'undefined') view.innerHTML = marked.parse(rawText);
         }
 
-        // 移动端核心修复：拦截所有事件，防止穿透，并为输入框聚焦添加微小延迟（针对 iOS）
+        // 移动端核心修复：拦截所有事件，防止穿透，并为输入框聚焦添加微小延迟
         toggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -138,7 +138,7 @@ function reconstructSelfHTML() {
     clone.querySelectorAll('.anno-view').forEach(view => view.style.display = 'none');
     clone.querySelectorAll('.anno-edit').forEach(edit => edit.style.display = 'none');
     
-    return "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n" + clone.innerHTML + "\\n</html>";
+    return "<!DOCTYPE html>\n<html lang=\"en\">\n" + clone.innerHTML + "\n</html>";
 }
 
 async function syncToGitHub() {
@@ -159,7 +159,7 @@ async function syncToGitHub() {
     const pureHtml = reconstructSelfHTML();
     
     let urlPath = window.location.pathname;
-    const match = urlPath.match(/(\\d{4}\\/\\d{1,2}\\/[^/]+\\.html)$/);
+    const match = urlPath.match(/(\d{4}\/\d{1,2}\/[^/]+\.html)$/);
     let fileRelPath = match ? "docs/" + match[1] : (urlPath.includes('docs/') ? urlPath.substring(urlPath.indexOf('docs/')) : null);
     
     if (!fileRelPath) {
@@ -169,7 +169,10 @@ async function syncToGitHub() {
     }
 
     try {
-        const base64Html = btoa(unescape(encodeURIComponent(pureHtml)));
+        // 安全且标准的 UTF-8 to Base64 编码方式 (解决 GitHub 报错问题)
+        const base64Html = btoa(encodeURIComponent(pureHtml).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+            return String.fromCharCode('0x' + p1);
+        }));
 
         const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${fileRelPath}?t=${Date.now()}`, {
             headers: { 'Authorization': `token ${token}` },
@@ -446,7 +449,6 @@ def save_daily_blind_box(events, now_obj):
 </body>
 </html>"""
 
-    # 修复核心：放弃可能被 f-string 转义的 {{}} 语法，直接使用 ### 包裹的占位符进行替换
     html_content = html_content.replace("###ENGINE_SCRIPT_PLACEHOLDER###", ENGINE_SCRIPT)
 
     with open(html_path, "w", encoding="utf-8") as f:
@@ -484,7 +486,8 @@ def generate_chronicle_hub():
 
     json_data = json.dumps(archive_data)
 
-    html_template = """<!DOCTYPE html>
+    # 同样的，将大厅中的 JS 代码作为原始字符串来规避 Python 转义影响
+    html_template = r"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -816,7 +819,9 @@ def generate_chronicle_hub():
                 if (!getRes.ok) return;
                 const fileData = await getRes.json();
                 
-                let content = decodeURIComponent(Array.prototype.map.call(atob(fileData.content), function(c) {
+                // 修复 Base64 解码在处理带回车的 JSON 时的潜在故障
+                const rawContent = fileData.content.replace(/\s/g, '');
+                let content = decodeURIComponent(Array.prototype.map.call(atob(rawContent), function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join(''));
                 
@@ -965,4 +970,29 @@ def generate_chronicle_hub():
         renderBoxList(selectedYear, selectedMonth, selectedDay);
     </script>
 </body>
-</html>
+</html>"""
+
+    final_html = html_template.replace("{REPLACEME_JSON_DATA}", json_data)
+    with open(os.path.join(BASE_DIR, "index.html"), "w", encoding="utf-8") as f:
+        f.write(final_html)
+    print("🚀 主轴编年史大厅 index.html 编译同步完成！")
+
+if __name__ == "__main__":
+    os.makedirs(BASE_DIR, exist_ok=True)
+    
+    # 强制生成 .nojekyll，这是彻底解决 GitHub Pages Build 报红叉的 100% 杀手锏
+    nojekyll_path = os.path.join(BASE_DIR, ".nojekyll")
+    if not os.path.exists(nojekyll_path):
+        with open(nojekyll_path, "w") as f:
+            pass
+        print("🛡️ 已自动生成 .nojekyll 防护盾，免除 GitHub Pages 报红叉！")
+
+    now = datetime.now(tz_utc_8)
+
+    data = fetch_wikipedia_history(now.month, now.day)
+    if data:
+        best_events = extract_blind_box_events(data)
+        if best_events:
+            save_daily_blind_box(best_events, now)
+
+    generate_chronicle_hub()
