@@ -22,9 +22,16 @@ PROMPT_TEMPLATES = [
 ]
 
 # ================= 批注核心引擎 (JS) =================
-# 使用 r"""...""" (Raw String) 防止 Python 吞掉正则表达式里的反斜杠 \d \/ 导致 JS 语法错误
+# 使用 r"""...""" 防止 Python 破坏正则语法
 ENGINE_SCRIPT = r"""
-const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+// XSS 安全隔离：对输入到 Markdown 的内容进行危险标签剥离
+function renderMarkdown(text) {
+    if (typeof marked === 'undefined') return text;
+    let safeText = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                       .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+                       .replace(/\bon[a-z]+\s*=/gi, 'data-blocked=');
+    return marked.parse(safeText);
+}
 
 let syncTimeout = null;
 function scheduleSync() {
@@ -49,10 +56,9 @@ function initAnnotations() {
         const rawText = edit.value.trim();
         if (rawText) {
             toggle.classList.add('has-anno');
-            if (typeof marked !== 'undefined') view.innerHTML = marked.parse(rawText);
+            view.innerHTML = renderMarkdown(rawText);
         }
 
-        // 移动端核心修复：拦截所有事件，防止穿透，并为输入框聚焦添加微小延迟
         toggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -102,7 +108,7 @@ function initAnnotations() {
 
         edit.addEventListener('blur', () => {
             const newVal = edit.value.trim();
-            try { view.innerHTML = newVal ? marked.parse(newVal) : ''; } catch(e){}
+            try { view.innerHTML = newVal ? renderMarkdown(newVal) : ''; } catch(e){}
             edit.style.display = 'none';
 
             if (newVal) {
@@ -124,21 +130,47 @@ function initAnnotations() {
 }
 window.onload = initAnnotations;
 
+// 核心修复：纯净重构逻辑，彻底抛弃可能被第三方插件污染的脏 DOM
 function reconstructSelfHTML() {
+    // 1. 同步输入内容到节点
     document.querySelectorAll('.anno-edit').forEach(edit => {
-        edit.textContent = edit.value;
+        edit.textContent = edit.value; 
     });
 
-    const clone = document.documentElement.cloneNode(true);
+    // 2. 仅克隆安全、必要的核心模块，阻断浏览器插件脚本被意外吸入
+    const navClone = document.querySelector('.nav-header').cloneNode(true);
+    const containerClone = document.querySelector('.container').cloneNode(true);
     
-    const statusMsg = clone.querySelector('#sync-status');
+    // 3. 清洗核心模块里的 UI 残留状态
+    const statusMsg = navClone.querySelector('#sync-status');
     if(statusMsg) statusMsg.style.display = 'none';
     
-    clone.querySelectorAll('.anno-box').forEach(box => box.style.display = 'none');
-    clone.querySelectorAll('.anno-view').forEach(view => view.style.display = 'none');
-    clone.querySelectorAll('.anno-edit').forEach(edit => edit.style.display = 'none');
-    
-    return "<!DOCTYPE html>\n<html lang=\"en\">\n" + clone.innerHTML + "\n</html>";
+    containerClone.querySelectorAll('.anno-box').forEach(box => box.style.display = 'none');
+    containerClone.querySelectorAll('.anno-view').forEach(view => view.style.display = 'none');
+    containerClone.querySelectorAll('.anno-edit').forEach(edit => edit.style.display = 'none');
+
+    // 4. 提取原汁原味的自带 CSS 和自带 JS
+    const styleText = document.querySelector('style').textContent;
+    const engineText = document.getElementById('matrix-engine').textContent;
+
+    // 5. 组装一个“无菌”的全新 HTML 字符串返回
+    const cleanHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>${document.title}</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
+    <style>${styleText}</style>
+</head>
+<body>
+    ${navClone.outerHTML}
+    ${containerClone.outerHTML}
+    <script id="matrix-engine">${engineText}<\/script>
+</body>
+</html>`;
+
+    return cleanHTML;
 }
 
 async function syncToGitHub() {
@@ -169,7 +201,6 @@ async function syncToGitHub() {
     }
 
     try {
-        // 安全且标准的 UTF-8 to Base64 编码方式 (解决 GitHub 报错问题)
         const base64Html = btoa(encodeURIComponent(pureHtml).replace(/%([0-9A-F]{2})/g, function(match, p1) {
             return String.fromCharCode('0x' + p1);
         }));
@@ -486,7 +517,6 @@ def generate_chronicle_hub():
 
     json_data = json.dumps(archive_data)
 
-    # 同样的，将大厅中的 JS 代码作为原始字符串来规避 Python 转义影响
     html_template = r"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -819,7 +849,6 @@ def generate_chronicle_hub():
                 if (!getRes.ok) return;
                 const fileData = await getRes.json();
                 
-                // 修复 Base64 解码在处理带回车的 JSON 时的潜在故障
                 const rawContent = fileData.content.replace(/\s/g, '');
                 let content = decodeURIComponent(Array.prototype.map.call(atob(rawContent), function(c) {
                     return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -980,7 +1009,6 @@ def generate_chronicle_hub():
 if __name__ == "__main__":
     os.makedirs(BASE_DIR, exist_ok=True)
     
-    # 强制生成 .nojekyll，这是彻底解决 GitHub Pages Build 报红叉的 100% 杀手锏
     nojekyll_path = os.path.join(BASE_DIR, ".nojekyll")
     if not os.path.exists(nojekyll_path):
         with open(nojekyll_path, "w") as f:
