@@ -49,7 +49,7 @@ function scheduleSync() {
 // === AI 解析核心逻辑 ===
 const AI_PROMPT = `请分析以下英文段落，并严格按照以下 Markdown 格式输出（不要输出任何额外的废话）：\n\n📌 完整翻译\n\n[此处填写完整翻译]\n\n📌 Key Expressions\n\n- **[单词或短语]**\n  = [中文释义]\n  （[可选的补充说明，如倒装结构或语境等]）\n\n段落内容：\n`;
 
-async function fetchGroq(text, apiKey) {
+async function fetchGroq(text, apiKey, modelName) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -57,7 +57,7 @@ async function fetchGroq(text, apiKey) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: modelName,
             messages: [
                 { role: 'system', content: 'You are an English teacher. Output EXACTLY in the requested Markdown format.' },
                 { role: 'user', content: AI_PROMPT + `"${text}"` }
@@ -71,7 +71,7 @@ async function fetchGroq(text, apiKey) {
     throw new Error('Groq返回数据异常');
 }
 
-async function fetchGLM(text, apiKey) {
+async function fetchGLM(text, apiKey, modelName) {
     const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
         method: 'POST',
         headers: {
@@ -79,7 +79,7 @@ async function fetchGLM(text, apiKey) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: 'GLM-4.5-Flash',
+            model: modelName,
             messages: [
                 { role: 'system', content: 'You are an English teacher. Output EXACTLY in the requested Markdown format.' },
                 { role: 'user', content: AI_PROMPT + `"${text}"` }
@@ -97,16 +97,20 @@ async function executeAIPipeline(text) {
     const pref = localStorage.getItem('PREFERRED_AI') || 'groq';
     const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
     const glmKey = localStorage.getItem('GLM_API_KEY') || '';
+    const groqModel = localStorage.getItem('GROQ_MODEL') || '';
+    const glmModel = localStorage.getItem('GLM_MODEL') || '';
 
-    if (!groqKey && !glmKey) throw new Error('MISSING_KEYS');
+    if ((!groqKey && !glmKey) || (!groqModel && !glmModel)) throw new Error('MISSING_KEYS_OR_MODELS');
 
     const runGroq = async () => {
         if (!groqKey) throw new Error("Groq API Key 未配置");
-        return await fetchGroq(text, groqKey);
+        if (!groqModel) throw new Error("Groq 模型未配置");
+        return await fetchGroq(text, groqKey, groqModel);
     };
     const runGLM = async () => {
         if (!glmKey) throw new Error("智谱GLM API Key 未配置");
-        return await fetchGLM(text, glmKey);
+        if (!glmModel) throw new Error("智谱GLM 模型未配置");
+        return await fetchGLM(text, glmKey, glmModel);
     };
 
     if (pref === 'groq') {
@@ -114,7 +118,7 @@ async function executeAIPipeline(text) {
             return await runGroq();
         } catch (err) {
             console.warn("首选 Groq 失败，尝试降级到智谱:", err);
-            if (glmKey) {
+            if (glmKey && glmModel) {
                 document.getElementById('sync-status').innerText = '⚠️ Groq异常，正降级为智谱...';
                 return await runGLM();
             }
@@ -125,7 +129,7 @@ async function executeAIPipeline(text) {
             return await runGLM();
         } catch (err) {
             console.warn("首选 智谱 失败，尝试降级到Groq:", err);
-            if (groqKey) {
+            if (groqKey && groqModel) {
                 document.getElementById('sync-status').innerText = '⚠️ 智谱异常，正降级为Groq...';
                 return await runGroq();
             }
@@ -157,9 +161,11 @@ function initAnnotations() {
 
                 const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
                 const glmKey = localStorage.getItem('GLM_API_KEY') || '';
+                const groqModel = localStorage.getItem('GROQ_MODEL') || '';
+                const glmModel = localStorage.getItem('GLM_MODEL') || '';
                 
-                if (!groqKey && !glmKey) {
-                    alert('⚠️ 请先返回【日历大厅】右上角的 ⚙️配置中心 设置 API Key！');
+                if ((!groqKey && !glmKey) || (!groqModel && !glmModel)) {
+                    alert('⚠️ 请先返回【日历大厅】右上角的 ⚙️配置中心 设置 API Key 和模型！');
                     return;
                 }
 
@@ -192,8 +198,8 @@ function initAnnotations() {
                     setTimeout(() => { if (statusMsg.innerText.includes('AI')) statusMsg.style.display = 'none'; }, 2000);
                 } catch (err) {
                     console.error(err);
-                    if (err.message === 'MISSING_KEYS') {
-                        alert('⚠️ 请返回日历大厅配置 AI 密钥！');
+                    if (err.message === 'MISSING_KEYS_OR_MODELS') {
+                        alert('⚠️ 请返回日历大厅配置 AI 密钥和模型！');
                     } else {
                         alert('❌ AI 解析失败: ' + err.message);
                     }
@@ -301,7 +307,7 @@ function reconstructSelfHTML() {
 
     // 5. 组装一个“无菌”的全新 HTML 字符串返回
     const cleanHTML = `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -479,7 +485,7 @@ def save_daily_blind_box(events, now_obj):
         """
 
     html_content = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -612,7 +618,7 @@ def save_daily_blind_box(events, now_obj):
 </head>
 <body>
     <div class="nav-header">
-        <a href="../../index.html">📜 Return to Chronicle</a>
+        <a href="../../index.html">📜 返回档案馆</a>
         <div class="header-right">
             <span class="sync-status" id="sync-status">📡 同步中...</span>
             <span style="font-size:0.9rem; color:var(--ink-muted); font-family:sans-serif;">{now_obj.strftime('%Y-%m-%d')}</span>
@@ -809,17 +815,31 @@ def generate_chronicle_hub():
             <div class="form-group">
                 <label>首选 AI 引擎 (失败自动降级)</label>
                 <select id="inputPrefAI">
-                    <option value="groq">Groq (Llama-3.3)</option>
-                    <option value="glm">智谱 (GLM-4.5-Flash)</option>
+                    <option value="groq">Groq</option>
+                    <option value="glm">智谱</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label>Groq API Key</label>
-                <input type="password" id="inputGroq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxx">
+            
+            <div class="form-group" style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label>Groq API Key</label>
+                    <input type="password" id="inputGroq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxx">
+                </div>
+                <div style="flex:1;">
+                    <label>Groq 模型名称</label>
+                    <input type="text" id="inputGroqModel" placeholder="例如: llama-3.3-70b-versatile">
+                </div>
             </div>
-            <div class="form-group">
-                <label>智谱 GLM API Key</label>
-                <input type="password" id="inputGLM" placeholder="填写智谱 API Key">
+
+            <div class="form-group" style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label>智谱 GLM API Key</label>
+                    <input type="password" id="inputGLM" placeholder="填写智谱 API Key">
+                </div>
+                <div style="flex:1;">
+                    <label>智谱 GLM 模型名称</label>
+                    <input type="text" id="inputGLMModel" placeholder="例如: GLM-4.5-Flash">
+                </div>
             </div>
             
             <div class="modal-actions">
@@ -869,6 +889,8 @@ def generate_chronicle_hub():
         const inputPrefAI = document.getElementById('inputPrefAI');
         const inputGroq = document.getElementById('inputGroq');
         const inputGLM = document.getElementById('inputGLM');
+        const inputGroqModel = document.getElementById('inputGroqModel');
+        const inputGLMModel = document.getElementById('inputGLMModel');
 
         function openConfigModal() {
             inputToken.value = localStorage.getItem('gh_token') || '';
@@ -877,6 +899,8 @@ def generate_chronicle_hub():
             inputPrefAI.value = localStorage.getItem('PREFERRED_AI') || 'groq';
             inputGroq.value = localStorage.getItem('GROQ_API_KEY') || '';
             inputGLM.value = localStorage.getItem('GLM_API_KEY') || '';
+            inputGroqModel.value = localStorage.getItem('GROQ_MODEL') || '';
+            inputGLMModel.value = localStorage.getItem('GLM_MODEL') || '';
             configModal.classList.add('show');
         }
 
@@ -895,6 +919,8 @@ def generate_chronicle_hub():
             localStorage.setItem('PREFERRED_AI', inputPrefAI.value);
             localStorage.setItem('GROQ_API_KEY', inputGroq.value.trim());
             localStorage.setItem('GLM_API_KEY', inputGLM.value.trim());
+            localStorage.setItem('GROQ_MODEL', inputGroqModel.value.trim());
+            localStorage.setItem('GLM_MODEL', inputGLMModel.value.trim());
             configModal.classList.remove('show');
         });
 
