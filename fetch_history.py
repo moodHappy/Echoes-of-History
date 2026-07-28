@@ -46,11 +46,100 @@ function scheduleSync() {
     syncTimeout = setTimeout(syncToGitHub, 5000);
 }
 
+// === AI 解析核心逻辑 ===
+const AI_PROMPT = `请分析以下英文段落，并严格按照以下 Markdown 格式输出（不要输出任何额外的废话）：\n\n📌 完整翻译\n\n[此处填写完整翻译]\n\n📌 Key Expressions\n\n- **[单词或短语]**\n  = [中文释义]\n  （[可选的补充说明，如倒装结构或语境等]）\n\n段落内容：\n`;
+
+async function fetchGroq(text, apiKey) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: 'You are an English teacher. Output EXACTLY in the requested Markdown format.' },
+                { role: 'user', content: AI_PROMPT + `"${text}"` }
+            ],
+            temperature: 0.3
+        })
+    });
+    if (!res.ok) throw new Error(`Groq API Error: ${res.status}`);
+    const json = await res.json();
+    if (json.choices && json.choices.length > 0) return json.choices[0].message.content.trim();
+    throw new Error('Groq返回数据异常');
+}
+
+async function fetchGLM(text, apiKey) {
+    const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'GLM-4.5-Flash',
+            messages: [
+                { role: 'system', content: 'You are an English teacher. Output EXACTLY in the requested Markdown format.' },
+                { role: 'user', content: AI_PROMPT + `"${text}"` }
+            ],
+            temperature: 0.3
+        })
+    });
+    if (!res.ok) throw new Error(`智谱GLM API Error: ${res.status}`);
+    const json = await res.json();
+    if (json.choices && json.choices.length > 0) return json.choices[0].message.content.trim();
+    throw new Error('智谱GLM返回数据异常');
+}
+
+async function executeAIPipeline(text) {
+    const pref = localStorage.getItem('PREFERRED_AI') || 'groq';
+    const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
+    const glmKey = localStorage.getItem('GLM_API_KEY') || '';
+
+    if (!groqKey && !glmKey) throw new Error('MISSING_KEYS');
+
+    const runGroq = async () => {
+        if (!groqKey) throw new Error("Groq API Key 未配置");
+        return await fetchGroq(text, groqKey);
+    };
+    const runGLM = async () => {
+        if (!glmKey) throw new Error("智谱GLM API Key 未配置");
+        return await fetchGLM(text, glmKey);
+    };
+
+    if (pref === 'groq') {
+        try {
+            return await runGroq();
+        } catch (err) {
+            console.warn("首选 Groq 失败，尝试降级到智谱:", err);
+            if (glmKey) {
+                document.getElementById('sync-status').innerText = '⚠️ Groq异常，正降级为智谱...';
+                return await runGLM();
+            }
+            throw err;
+        }
+    } else {
+        try {
+            return await runGLM();
+        } catch (err) {
+            console.warn("首选 智谱 失败，尝试降级到Groq:", err);
+            if (groqKey) {
+                document.getElementById('sync-status').innerText = '⚠️ 智谱异常，正降级为Groq...';
+                return await runGroq();
+            }
+            throw err;
+        }
+    }
+}
+
 function initAnnotations() {
     document.querySelectorAll('.para-wrap').forEach(wrap => {
         const view = wrap.querySelector('.anno-view');
         const edit = wrap.querySelector('.anno-edit');
         const toggle = wrap.querySelector('.anno-toggle');
+        const aiToggle = wrap.querySelector('.ai-toggle');
         const box = wrap.querySelector('.anno-box');
 
         const rawText = edit.value.trim();
@@ -58,7 +147,64 @@ function initAnnotations() {
             toggle.classList.add('has-anno');
             view.innerHTML = renderMarkdown(rawText);
         }
+        
+        // --- AI 解析交互 ---
+        if (aiToggle) {
+            aiToggle.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (aiToggle.classList.contains('loading')) return;
 
+                const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
+                const glmKey = localStorage.getItem('GLM_API_KEY') || '';
+                
+                if (!groqKey && !glmKey) {
+                    alert('⚠️ 请先返回【日历大厅】右上角的 ⚙️配置中心 设置 API Key！');
+                    return;
+                }
+
+                // 提取纯文本，避开红点和机器人图标
+                const pClone = wrap.querySelector('.card-text').cloneNode(true);
+                pClone.querySelectorAll('.anno-toggle, .ai-toggle').forEach(el => el.remove());
+                const pText = pClone.textContent.trim();
+                if (!pText) return;
+
+                aiToggle.classList.add('loading');
+                const statusMsg = document.getElementById('sync-status');
+                statusMsg.style.display = 'inline-block';
+                statusMsg.style.backgroundColor = '#0969da';
+                statusMsg.innerText = '🤖 AI 思考中...';
+
+                try {
+                    const aiContent = await executeAIPipeline(pText);
+                    
+                    box.style.display = 'block';
+                    view.style.display = 'none';
+                    edit.style.display = 'block';
+                    edit.value = aiContent;
+                    
+                    // 触发失焦，联动 Marked.js 渲染与 GitHub 自动保存
+                    edit.focus();
+                    edit.blur();
+                    
+                    statusMsg.style.backgroundColor = '#2ea44f';
+                    statusMsg.innerText = '✅ AI 解析成功';
+                    setTimeout(() => { if (statusMsg.innerText.includes('AI')) statusMsg.style.display = 'none'; }, 2000);
+                } catch (err) {
+                    console.error(err);
+                    if (err.message === 'MISSING_KEYS') {
+                        alert('⚠️ 请返回日历大厅配置 AI 密钥！');
+                    } else {
+                        alert('❌ AI 解析失败: ' + err.message);
+                    }
+                    statusMsg.style.display = 'none';
+                } finally {
+                    aiToggle.classList.remove('loading');
+                }
+            });
+        }
+
+        // --- 原有红点交互 ---
         toggle.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -317,7 +463,8 @@ def save_daily_blind_box(events, now_obj):
         <div class="archive-card">
             <div class="card-epoch">📍 ANNO DOMINI {ev['year']}</div>
             <div class="para-wrap">
-                <p class="card-text">{ev['text']}<span class="anno-toggle" title="点击添加/查看批注">🔴</span></p>
+                <!-- 在这里注入了 AI 智能解析机器人按钮 -->
+                <p class="card-text">{ev['text']}<span class="anno-toggle" title="点击添加/查看批注">🔴</span><span class="ai-toggle" title="AI智能解析">🤖</span></p>
                 <div class="anno-box" style="display:none;">
                     <div class="anno-view markdown-body"></div>
                     <textarea class="anno-edit" style="display:none;" placeholder="在此记录有关该历史事件的灵感或设定..."></textarea>
@@ -401,7 +548,7 @@ def save_daily_blind_box(events, now_obj):
         .para-wrap {{ position: relative; margin-bottom: 18px; }}
         .card-text {{ font-size: 1.15rem; color: var(--ink-dark); margin: 0; text-align: justify; line-height: 1.6; }}
         
-        .anno-toggle {{ 
+        .anno-toggle, .ai-toggle {{ 
             display: inline-block; 
             margin-left: 8px; 
             cursor: pointer; 
@@ -410,15 +557,17 @@ def save_daily_blind_box(events, now_obj):
             vertical-align: baseline; 
             transition: all 0.2s; 
             user-select: none; 
-            padding: 6px 10px; 
+            padding: 6px 6px; 
             margin-top: -6px;
             margin-bottom: -6px;
             border-radius: 6px;
             touch-action: manipulation; 
             -webkit-tap-highlight-color: transparent; 
         }}
-        .anno-toggle:hover, .anno-toggle:active {{ opacity: 0.8; transform: scale(1.1); }}
+        .anno-toggle:hover, .anno-toggle:active, .ai-toggle:hover, .ai-toggle:active {{ opacity: 0.8; transform: scale(1.1); }}
         .anno-toggle.has-anno {{ opacity: 1; }}
+        .ai-toggle.loading::after {{ content: "⏳"; display: inline-block; animation: spin 1s linear infinite; }}
+        @keyframes spin {{ 100% {{ transform: rotate(360deg); }} }}
 
         .anno-box {{ display: none; margin-top: 12px; background: #fdfbf7; border-left: 4px solid var(--imperial-blue); padding: 12px 16px; border-radius: 0 6px 6px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }}
         .anno-view {{ font-size: 1.05rem; line-height: 1.6; color: var(--ink-dark); min-height: 24px; }}
@@ -588,17 +737,15 @@ def generate_chronicle_hub():
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
         .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
         
-        .modal-box { background: #fff; width: 85%; max-width: 360px; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .modal-box { background: #fff; width: 85%; max-width: 360px; max-height: 90vh; overflow-y: auto; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         .modal-title { font-size: 20px; font-weight: bold; color: #222; margin: 0 0 8px 0; }
         .modal-subtitle { font-size: 12px; color: #777; margin-bottom: 22px; line-height: 1.5; }
         
-        .form-group { margin-bottom: 18px; }
+        .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; font-weight: bold; }
-        .form-group input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; }
-        .form-group input:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1); }
-        #inputToken { background-color: #f0f4ff; border-color: #dbe4ff; }
-        #inputToken:focus { background-color: #fff; }
-
+        .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; background: #fff; appearance: none; -webkit-appearance: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1); }
+        
         .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
         .modal-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; transition: opacity 0.2s; }
         .btn-cancel { background: #f0f0f0; color: #444; }
@@ -640,19 +787,39 @@ def generate_chronicle_hub():
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
             <h2 class="modal-title">本地配置中心</h2>
-            <p class="modal-subtitle">密钥仅保存在您的浏览器本地，不会上传到任何第三方服务器。</p>
+            <p class="modal-subtitle">所有密钥均安全储存在浏览器本地（LocalStorage），无云端泄露风险。</p>
             
             <div class="form-group">
                 <label>GitHub Personal Access Token</label>
-                <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="background-color: #f0f4ff; border-color: #dbe4ff;">
+            </div>
+            <div class="form-group" style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label>GitHub 用户名</label>
+                    <input type="text" id="inputUser" placeholder="如: moodHappy">
+                </div>
+                <div style="flex:1;">
+                    <label>GitHub 仓库名</label>
+                    <input type="text" id="inputRepo" placeholder="如: bbc-news">
+                </div>
+            </div>
+
+            <div style="border-top: 1px dashed #e0e0e0; margin: 20px 0;"></div>
+
+            <div class="form-group">
+                <label>首选 AI 引擎 (失败自动降级)</label>
+                <select id="inputPrefAI">
+                    <option value="groq">Groq (Llama-3.3)</option>
+                    <option value="glm">智谱 (GLM-4.5-Flash)</option>
+                </select>
             </div>
             <div class="form-group">
-                <label>GitHub 用户名</label>
-                <input type="text" id="inputUser" placeholder="例如: moodHappy">
+                <label>Groq API Key</label>
+                <input type="password" id="inputGroq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxx">
             </div>
             <div class="form-group">
-                <label>GitHub 仓库名</label>
-                <input type="text" id="inputRepo" placeholder="例如: bbc-news-archive">
+                <label>智谱 GLM API Key</label>
+                <input type="password" id="inputGLM" placeholder="填写智谱 API Key">
             </div>
             
             <div class="modal-actions">
@@ -695,14 +862,21 @@ def generate_chronicle_hub():
         const btnSettings = document.getElementById('btnSettings');
         const btnCancel = document.getElementById('btnCancel');
         const btnSave = document.getElementById('btnSave');
+        
         const inputToken = document.getElementById('inputToken');
         const inputUser = document.getElementById('inputUser');
         const inputRepo = document.getElementById('inputRepo');
+        const inputPrefAI = document.getElementById('inputPrefAI');
+        const inputGroq = document.getElementById('inputGroq');
+        const inputGLM = document.getElementById('inputGLM');
 
         function openConfigModal() {
             inputToken.value = localStorage.getItem('gh_token') || '';
             inputUser.value = localStorage.getItem('gh_user') || '';
             inputRepo.value = localStorage.getItem('gh_repo') || '';
+            inputPrefAI.value = localStorage.getItem('PREFERRED_AI') || 'groq';
+            inputGroq.value = localStorage.getItem('GROQ_API_KEY') || '';
+            inputGLM.value = localStorage.getItem('GLM_API_KEY') || '';
             configModal.classList.add('show');
         }
 
@@ -718,6 +892,9 @@ def generate_chronicle_hub():
             localStorage.setItem('gh_token', inputToken.value.trim());
             localStorage.setItem('gh_user', inputUser.value.trim());
             localStorage.setItem('gh_repo', inputRepo.value.trim());
+            localStorage.setItem('PREFERRED_AI', inputPrefAI.value);
+            localStorage.setItem('GROQ_API_KEY', inputGroq.value.trim());
+            localStorage.setItem('GLM_API_KEY', inputGLM.value.trim());
             configModal.classList.remove('show');
         });
 
