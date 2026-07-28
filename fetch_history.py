@@ -1,4 +1,4 @@
-import os
+Import os
 import requests
 import json
 import random
@@ -47,7 +47,8 @@ function scheduleSync() {
 }
 
 // === AI 解析核心逻辑 ===
-const AI_PROMPT = `请分析以下英文段落，并严格按照以下 Markdown 格式输出（不要输出任何额外的废话）：\n\n📌 完整翻译\n\n[此处填写完整翻译]\n\n📌 Key Expressions\n\n- **[单词或短语]**\n  = [中文释义]\n  （[可选的补充说明，如倒装结构或语境等]）\n\n段落内容：\n`;
+// 【修改】：加入了 ### 触发 Markdown 三级标题和 CSS 虚线样式
+const AI_PROMPT = `请分析以下英文段落，并严格按照以下 Markdown 格式输出（不要输出任何额外的废话）：\n\n### 📌 完整翻译\n\n[此处填写完整翻译]\n\n### 📌 Key Expressions\n\n- **[单词或短语]**\n  = [中文释义]\n  （[可选的补充说明，如倒装结构或语境等]）\n\n段落内容：\n`;
 
 async function fetchGroq(text, apiKey, modelName) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
