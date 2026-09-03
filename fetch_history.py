@@ -22,7 +22,6 @@ PROMPT_TEMPLATES = [
 ]
 
 # ================= 批注核心引擎 (JS) =================
-# 使用 r"""...""" 防止 Python 破坏正则语法
 ENGINE_SCRIPT = r"""
 // XSS 安全隔离：对输入到 Markdown 的内容进行危险标签剥离
 function renderMarkdown(text) {
@@ -47,7 +46,6 @@ function scheduleSync() {
 }
 
 // === AI 解析核心逻辑 ===
-// 【修改】：加入了 ### 触发 Markdown 三级标题和 CSS 虚线样式
 const AI_PROMPT = `请分析以下英文段落，并严格按照以下 Markdown 格式输出（不要输出任何额外的废话）：\n\n### 📌 完整翻译\n\n[此处填写完整翻译]\n\n### 📌 Key Expressions\n\n- **[单词或短语]**\n  = [中文释义]\n  （[可选的补充说明，如倒装结构或语境等]）\n\n段落内容：\n`;
 
 async function fetchGroq(text, apiKey, modelName) {
@@ -94,34 +92,119 @@ async function fetchGLM(text, apiKey, modelName) {
     throw new Error('智谱GLM返回数据异常');
 }
 
+// 【新增】：全球/国内主流 AI 超级适配器 (OpenAI标准格式、Gemini、Claude原生接口)
+async function fetchCustomAI(text, url, apiKey, modelName) {
+    let headers = { 'Content-Type': 'application/json' };
+    let bodyData = {};
+
+    // 特殊适配 1: Anthropic Claude 官方原生 API
+    if (url.includes('anthropic.com')) {
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        headers['anthropic-dangerous-direct-browser-access'] = 'true';
+        bodyData = {
+            model: modelName,
+            max_tokens: 2000,
+            messages: [{ role: 'user', content: AI_PROMPT + `"${text}"` }]
+        };
+    }
+    // 特殊适配 2: Google Gemini 官方原生 API
+    else if (url.includes('generativelanguage.googleapis.com')) {
+        let targetUrl = url;
+        if (!targetUrl.includes('key=')) {
+            targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'key=' + apiKey;
+        }
+        const res = await fetch(targetUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: AI_PROMPT + `"${text}"` }] }]
+            })
+        });
+        if (!res.ok) throw new Error(`Gemini API Error: ${res.status}`);
+        const json = await res.json();
+        if (json.candidates && json.candidates[0]?.content?.parts[0]?.text) {
+            return json.candidates[0].content.parts[0].text.trim();
+        }
+        throw new Error('Gemini 返回数据异常');
+    }
+    // 标准适配: 涵盖 OpenAI, DeepSeek, Kimi, 硅基流动, ChatAnywhere, OpenRouter 等
+    else {
+        headers['Authorization'] = 'Bearer ' + apiKey;
+        bodyData = {
+            model: modelName,
+            messages: [
+                { role: 'system', content: 'You are an English teacher. Output EXACTLY in the requested Markdown format.' },
+                { role: 'user', content: AI_PROMPT + `"${text}"` }
+            ],
+            temperature: 0.3
+        };
+    }
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(bodyData)
+    });
+    if (!res.ok) throw new Error(`自定义 AI 接口报错: ${res.status}`);
+    const json = await res.json();
+    if (json.content && Array.isArray(json.content) && json.content[0]?.text) {
+        return json.content[0].text.trim();
+    }
+    if (json.choices && json.choices.length > 0) {
+        return json.choices[0].message.content.trim();
+    }
+    throw new Error('自定义 AI 返回结构不符合预期');
+}
+
 async function executeAIPipeline(text) {
-    const pref = localStorage.getItem('PREFERRED_AI') || 'groq';
+    const pref = localStorage.getItem('PREFERRED_AI') || 'custom';
     const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
     const glmKey = localStorage.getItem('GLM_API_KEY') || '';
     const groqModel = localStorage.getItem('GROQ_MODEL') || '';
     const glmModel = localStorage.getItem('GLM_MODEL') || '';
-
-    if ((!groqKey && !glmKey) || (!groqModel && !glmModel)) throw new Error('MISSING_KEYS_OR_MODELS');
+    const customUrl = localStorage.getItem('CUSTOM_API_URL') || '';
+    const customKey = localStorage.getItem('CUSTOM_API_KEY') || '';
+    const customModel = localStorage.getItem('CUSTOM_MODEL') || '';
 
     const runGroq = async () => {
-        if (!groqKey) throw new Error("Groq API Key 未配置");
-        if (!groqModel) throw new Error("Groq 模型未配置");
+        if (!groqKey || !groqModel) throw new Error("Groq 配置不完整");
         return await fetchGroq(text, groqKey, groqModel);
     };
     const runGLM = async () => {
-        if (!glmKey) throw new Error("智谱GLM API Key 未配置");
-        if (!glmModel) throw new Error("智谱GLM 模型未配置");
+        if (!glmKey || !glmModel) throw new Error("智谱GLM 配置不完整");
         return await fetchGLM(text, glmKey, glmModel);
     };
+    const runCustom = async () => {
+        if (!customUrl || !customKey || !customModel) throw new Error("自定义 AI 配置不完整");
+        return await fetchCustomAI(text, customUrl, customKey, customModel);
+    };
 
-    if (pref === 'groq') {
+    if (pref === 'custom') {
+        try {
+            return await runCustom();
+        } catch (err) {
+            console.warn("自定义 AI 失败，尝试降级:", err);
+            if (groqKey && groqModel) {
+                document.getElementById('sync-status').innerText = '⚠️ 自定义异常，正降级为Groq...';
+                try { return await runGroq(); } catch(e2) { if (glmKey && glmModel) return await runGLM(); throw e2; }
+            } else if (glmKey && glmModel) {
+                document.getElementById('sync-status').innerText = '⚠️ 自定义异常，正降级为智谱...';
+                return await runGLM();
+            }
+            throw err;
+        }
+    } else if (pref === 'groq') {
         try {
             return await runGroq();
         } catch (err) {
-            console.warn("首选 Groq 失败，尝试降级到智谱:", err);
+            console.warn("首选 Groq 失败，尝试降级:", err);
             if (glmKey && glmModel) {
                 document.getElementById('sync-status').innerText = '⚠️ Groq异常，正降级为智谱...';
                 return await runGLM();
+            } else if (customUrl && customKey && customModel) {
+                document.getElementById('sync-status').innerText = '⚠️ Groq异常，正降级为自定义AI...';
+                return await runCustom();
             }
             throw err;
         }
@@ -129,10 +212,13 @@ async function executeAIPipeline(text) {
         try {
             return await runGLM();
         } catch (err) {
-            console.warn("首选 智谱 失败，尝试降级到Groq:", err);
+            console.warn("首选 智谱 失败，尝试降级:", err);
             if (groqKey && groqModel) {
                 document.getElementById('sync-status').innerText = '⚠️ 智谱异常，正降级为Groq...';
                 return await runGroq();
+            } else if (customUrl && customKey && customModel) {
+                document.getElementById('sync-status').innerText = '⚠️ 智谱异常，正降级为自定义AI...';
+                return await runCustom();
             }
             throw err;
         }
@@ -160,13 +246,19 @@ function initAnnotations() {
                 e.stopPropagation();
                 if (aiToggle.classList.contains('loading')) return;
 
+                const pref = localStorage.getItem('PREFERRED_AI') || 'custom';
                 const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
                 const glmKey = localStorage.getItem('GLM_API_KEY') || '';
-                const groqModel = localStorage.getItem('GROQ_MODEL') || '';
-                const glmModel = localStorage.getItem('GLM_MODEL') || '';
+                const customUrl = localStorage.getItem('CUSTOM_API_URL') || '';
+                const customKey = localStorage.getItem('CUSTOM_API_KEY') || '';
                 
-                if ((!groqKey && !glmKey) || (!groqModel && !glmModel)) {
-                    alert('⚠️ 请先返回【日历大厅】右上角的 ⚙️配置中心 设置 API Key 和模型！');
+                let isReady = false;
+                if (pref === 'custom' && customUrl && customKey) isReady = true;
+                if (pref === 'groq' && groqKey) isReady = true;
+                if (pref === 'glm' && glmKey) isReady = true;
+
+                if (!isReady && !groqKey && !glmKey && !customKey) {
+                    alert('⚠️ 请先返回【档案馆大厅】右上角的 ⚙️配置中心 设置 AI 接口与密钥！');
                     return;
                 }
 
@@ -179,7 +271,7 @@ function initAnnotations() {
                 aiToggle.classList.add('loading');
                 const statusMsg = document.getElementById('sync-status');
                 statusMsg.style.display = 'inline-block';
-                statusMsg.style.backgroundColor = '#0969da';
+                statusMsg.style.backgroundColor = '#1a365d';
                 statusMsg.innerText = '🤖 AI 思考中...';
 
                 try {
@@ -199,11 +291,7 @@ function initAnnotations() {
                     setTimeout(() => { if (statusMsg.innerText.includes('AI')) statusMsg.style.display = 'none'; }, 2000);
                 } catch (err) {
                     console.error(err);
-                    if (err.message === 'MISSING_KEYS_OR_MODELS') {
-                        alert('⚠️ 请返回日历大厅配置 AI 密钥和模型！');
-                    } else {
-                        alert('❌ AI 解析失败: ' + err.message);
-                    }
+                    alert('❌ AI 解析失败: ' + err.message);
                     statusMsg.style.display = 'none';
                 } finally {
                     aiToggle.classList.remove('loading');
@@ -688,8 +776,9 @@ def generate_chronicle_hub():
             --imperial: #ff3b30; 
             --imperial-dark: #8c1d40;
             --card-bg: #ffffff;
-            --theme-blue: #4285f4;
+            --theme-blue: #1a365d;
         }
+        * { box-sizing: border-box; }
         body, html { 
             font-family: "Georgia", -apple-system, BlinkMacSystemFont, serif; 
             -webkit-font-smoothing: antialiased; 
@@ -710,9 +799,9 @@ def generate_chronicle_hub():
         .container { max-width: 600px; margin: 0 auto; }
         
         .cal-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 20px; }
-        .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .cal-btn { background: var(--theme-blue); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .cal-btn:active { opacity: 0.8; transform: scale(0.96); }
-        .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 6px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
+        .select-shell { padding: 6px 12px; border: 1px solid var(--parchment-border); border-radius: 8px; font-size: 15px; background: #fff; font-family: inherit; font-weight: bold; outline: none; }
         
         .calendar-box { background: var(--card-bg); border: 1px solid var(--parchment-border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; user-select: none; }
         .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold; font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f5ebd9; }
@@ -741,24 +830,30 @@ def generate_chronicle_hub():
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.45); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
         .modal-overlay.show { display: flex; animation: fadeInModal 0.2s; }
         
-        .modal-box { background: #fff; width: 85%; max-width: 360px; max-height: 90vh; overflow-y: auto; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        .modal-title { font-size: 20px; font-weight: bold; color: #222; margin: 0 0 8px 0; }
-        .modal-subtitle { font-size: 12px; color: #777; margin-bottom: 22px; line-height: 1.5; }
+        .modal-box { background: #fff; width: 92%; max-width: 440px; max-height: 88vh; overflow-y: auto; border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .modal-title { font-size: 18px; font-weight: bold; color: #222; margin: 0 0 4px 0; }
+        .modal-subtitle { font-size: 12px; color: #777; margin-bottom: 18px; line-height: 1.5; }
         
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; font-weight: bold; }
-        .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s; background: #fff; appearance: none; -webkit-appearance: none; }
-        .form-group input:focus, .form-group select:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1); }
+        .section-card { background: #fbf9f6; border: 1px solid #eee5d8; border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+        .section-title { font-size: 12px; font-weight: bold; color: var(--theme-blue); margin-bottom: 10px; }
         
-        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
-        .modal-btn { padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; transition: opacity 0.2s; }
+        .form-group { margin-bottom: 12px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-group label { display: block; font-size: 11.5px; color: #555; margin-bottom: 5px; font-weight: bold; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+        .form-group input, .form-group select { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; transition: all 0.2s; background: #fff; }
+        .form-group select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; cursor: pointer; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--theme-blue); box-shadow: 0 0 0 2px rgba(26,54,93,0.1); }
+        
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; position: sticky; bottom: -24px; background: #fff; padding-top: 12px; border-top: 1px solid #eee; }
+        .modal-btn { padding: 9px 18px; border-radius: 8px; font-size: 13.5px; font-weight: bold; cursor: pointer; border: none; transition: opacity 0.2s; }
         .btn-cancel { background: #f0f0f0; color: #444; }
         .btn-save { background: var(--theme-blue); color: #fff; }
         .btn-cancel:active { background: #e4e4e4; }
-        .btn-save:active { background: #3367d6; }
+        .btn-save:active { opacity: 0.9; }
         
         @keyframes fadeInModal { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
@@ -791,55 +886,87 @@ def generate_chronicle_hub():
         </div>
     </div>
 
+    <!-- 现代美观本地配置 Modal -->
     <div class="modal-overlay" id="configModal">
         <div class="modal-box">
-            <h2 class="modal-title">本地配置中心</h2>
+            <h2 class="modal-title">⚙️ 核心配置中心</h2>
             <p class="modal-subtitle">所有密钥均安全储存在浏览器本地（LocalStorage），无云端泄露风险。</p>
             
-            <div class="form-group">
-                <label>GitHub Personal Access Token</label>
-                <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="background-color: #f0f4ff; border-color: #dbe4ff;">
-            </div>
-            <div class="form-group" style="display:flex; gap:10px;">
-                <div style="flex:1;">
-                    <label>GitHub 用户名</label>
-                    <input type="text" id="inputUser" placeholder="如: moodHappy">
+            <!-- GitHub 同步配置 -->
+            <div class="section-card">
+                <div class="section-title">🐙 GitHub 仓库同步</div>
+                <div class="form-group">
+                    <label>Personal Access Token</label>
+                    <input type="password" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
                 </div>
-                <div style="flex:1;">
-                    <label>GitHub 仓库名</label>
-                    <input type="text" id="inputRepo" placeholder="如: bbc-news">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>GitHub 用户名</label>
+                        <input type="text" id="inputUser" placeholder="如: moodHappy">
+                    </div>
+                    <div class="form-group">
+                        <label>GitHub 仓库名</label>
+                        <input type="text" id="inputRepo" placeholder="如: echoes-history">
+                    </div>
                 </div>
             </div>
 
-            <div style="border-top: 1px dashed #e0e0e0; margin: 20px 0;"></div>
-
+            <!-- 首选引擎设置 -->
             <div class="form-group">
-                <label>首选 AI 引擎 (失败自动降级)</label>
+                <label>首选 AI 引擎 (失败自动无缝降级)</label>
                 <select id="inputPrefAI">
+                    <option value="custom">🌐 自定义 AI (兼容OpenAI格式 / Gemini / Claude)</option>
                     <option value="groq">Groq</option>
-                    <option value="glm">智谱</option>
+                    <option value="glm">智谱 (GLM)</option>
                 </select>
             </div>
-            
-            <div class="form-group" style="display:flex; gap:10px;">
-                <div style="flex:1;">
-                    <label>Groq API Key</label>
-                    <input type="password" id="inputGroq" placeholder="gsk_xxxxxxxxxxxxxxxxxxxx">
+
+            <!-- 自定义 AI 配置面板 -->
+            <div class="section-card">
+                <div class="section-title">🔌 自定义 AI 接口配置</div>
+                <div class="form-group">
+                    <label>API Endpoint (包含完整 URL 路径)</label>
+                    <input type="text" id="inputCustomUrl" placeholder="如: https://api.openai.com/v1/chat/completions">
                 </div>
-                <div style="flex:1;">
-                    <label>Groq 模型名称</label>
-                    <input type="text" id="inputGroqModel" placeholder="例如: llama-3.3-70b-versatile">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="inputCustomKey" placeholder="sk-xxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>模型名称</label>
+                        <input type="text" id="inputCustomModel" placeholder="如: gpt-4o-mini">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Groq 配置 -->
+            <div class="section-card">
+                <div class="section-title">⚡ Groq 引擎配置</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Groq API Key</label>
+                        <input type="password" id="inputGroq" placeholder="gsk_xxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>模型名称</label>
+                        <input type="text" id="inputGroqModel" placeholder="如: llama-3.3-70b-versatile">
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group" style="display:flex; gap:10px;">
-                <div style="flex:1;">
-                    <label>智谱 GLM API Key</label>
-                    <input type="password" id="inputGLM" placeholder="填写智谱 API Key">
-                </div>
-                <div style="flex:1;">
-                    <label>智谱 GLM 模型名称</label>
-                    <input type="text" id="inputGLMModel" placeholder="例如: GLM-4.5-Flash">
+            <!-- 智谱 GLM 配置 -->
+            <div class="section-card">
+                <div class="section-title">🇨🇳 智谱 GLM 配置</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>智谱 API Key</label>
+                        <input type="password" id="inputGLM" placeholder="填写智谱 API Key">
+                    </div>
+                    <div class="form-group">
+                        <label>模型名称</label>
+                        <input type="text" id="inputGLMModel" placeholder="如: glm-4-flash">
+                    </div>
                 </div>
             </div>
             
@@ -888,6 +1015,9 @@ def generate_chronicle_hub():
         const inputUser = document.getElementById('inputUser');
         const inputRepo = document.getElementById('inputRepo');
         const inputPrefAI = document.getElementById('inputPrefAI');
+        const inputCustomUrl = document.getElementById('inputCustomUrl');
+        const inputCustomKey = document.getElementById('inputCustomKey');
+        const inputCustomModel = document.getElementById('inputCustomModel');
         const inputGroq = document.getElementById('inputGroq');
         const inputGLM = document.getElementById('inputGLM');
         const inputGroqModel = document.getElementById('inputGroqModel');
@@ -897,7 +1027,10 @@ def generate_chronicle_hub():
             inputToken.value = localStorage.getItem('gh_token') || '';
             inputUser.value = localStorage.getItem('gh_user') || '';
             inputRepo.value = localStorage.getItem('gh_repo') || '';
-            inputPrefAI.value = localStorage.getItem('PREFERRED_AI') || 'groq';
+            inputPrefAI.value = localStorage.getItem('PREFERRED_AI') || 'custom';
+            inputCustomUrl.value = localStorage.getItem('CUSTOM_API_URL') || '';
+            inputCustomKey.value = localStorage.getItem('CUSTOM_API_KEY') || '';
+            inputCustomModel.value = localStorage.getItem('CUSTOM_MODEL') || '';
             inputGroq.value = localStorage.getItem('GROQ_API_KEY') || '';
             inputGLM.value = localStorage.getItem('GLM_API_KEY') || '';
             inputGroqModel.value = localStorage.getItem('GROQ_MODEL') || '';
@@ -906,7 +1039,6 @@ def generate_chronicle_hub():
         }
 
         btnSettings.addEventListener('click', openConfigModal);
-
         btnCancel.addEventListener('click', () => { configModal.classList.remove('show'); });
 
         configModal.addEventListener('click', (e) => {
@@ -918,11 +1050,15 @@ def generate_chronicle_hub():
             localStorage.setItem('gh_user', inputUser.value.trim());
             localStorage.setItem('gh_repo', inputRepo.value.trim());
             localStorage.setItem('PREFERRED_AI', inputPrefAI.value);
+            localStorage.setItem('CUSTOM_API_URL', inputCustomUrl.value.trim());
+            localStorage.setItem('CUSTOM_API_KEY', inputCustomKey.value.trim());
+            localStorage.setItem('CUSTOM_MODEL', inputCustomModel.value.trim());
             localStorage.setItem('GROQ_API_KEY', inputGroq.value.trim());
             localStorage.setItem('GLM_API_KEY', inputGLM.value.trim());
             localStorage.setItem('GROQ_MODEL', inputGroqModel.value.trim());
             localStorage.setItem('GLM_MODEL', inputGLMModel.value.trim());
             configModal.classList.remove('show');
+            alert('配置已成功保存在本地！');
         });
 
         let lastTapTime = 0;
@@ -1212,7 +1348,7 @@ def generate_chronicle_hub():
 
 if __name__ == "__main__":
     os.makedirs(BASE_DIR, exist_ok=True)
-    
+
     nojekyll_path = os.path.join(BASE_DIR, ".nojekyll")
     if not os.path.exists(nojekyll_path):
         with open(nojekyll_path, "w") as f:
